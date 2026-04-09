@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Fondo">
+<title>Mi Fondo · Vanguard S&P 500</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #18181f;
+  --bg4: #1f1f28;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0f0f5;
+  --text2: #8888a0;
+  --text3: #55556a;
+  --green: #00e5a0;
+  --green-bg: rgba(0,229,160,0.08);
+  --green-border: rgba(0,229,160,0.2);
+  --red: #ff4d6d;
+  --red-bg: rgba(255,77,109,0.08);
+  --red-border: rgba(255,77,109,0.2);
+  --accent: #7c6af7;
+  --accent2: rgba(124,106,247,0.15);
+  --gold: #f0b429;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+body {
+  padding-top: calc(var(--safe-top) + 0px);
+  padding-bottom: calc(var(--safe-bottom) + 80px);
+}
+
+.noise {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+.glow {
+  position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 400px; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse, rgba(124,106,247,0.12) 0%, transparent 70%);
+}
+
+.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 16px; }
+
+/* HEADER */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 0 24px;
+}
+.logo { display: flex; flex-direction: column; gap: 2px; }
+.logo-name { font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); }
+.logo-fund { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+.logo-fund span { color: var(--accent); }
+.last-update { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); text-align: right; line-height: 1.6; }
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text3); margin-right: 4px; vertical-align: middle; }
+.status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* VALORACIÓN PRINCIPAL */
+.main-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.main-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.val-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
+.val-main { font-family: 'DM Mono', monospace; font-size: 42px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); line-height: 1; margin-bottom: 10px; }
+.val-main.up { color: var(--green); }
+.val-main.down { color: var(--red); }
+.val-change {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
+  padding: 5px 12px; border-radius: 20px;
+}
+.val-change.up { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+.val-change.down { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+.val-change.neutral { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+.val-change::before { content: '▲'; font-size: 8px; }
+.val-change.down::before { content: '▼'; }
+.val-change.neutral::before { content: '—'; }
+
+.nav-est-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.nav-est-label { font-size: 11px; color: var(--text2); letter-spacing: 0.06em; }
+.nav-est-val { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text); }
+
+/* MINI STATS */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+}
+.stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; color: var(--text); }
+.stat-chg { font-family: 'DM Mono', monospace; font-size: 11px; margin-top: 3px; }
+.stat-chg.up { color: var(--green); }
+.stat-chg.down { color: var(--red); }
+.stat-chg.neutral { color: var(--text3); }
+
+/* SECCIÓN MI POSICIÓN */
+.section { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 12px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; cursor: pointer; user-select: none; }
+.section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); }
+.section-arrow { color: var(--text3); font-size: 12px; transition: transform 0.2s; }
+.section-arrow.open { transform: rotate(180deg); }
+.section-body { }
+.section-body.collapsed { display: none; }
+
+.field-group { margin-bottom: 14px; }
+.field-label { font-size: 11px; color: var(--text2); letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+.field-input-wrap { display: flex; align-items: center; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+.field-input-wrap:focus-within { border-color: var(--accent); }
+.field-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500;
+  color: var(--text); padding: 12px 14px; width: 100%;
+}
+.field-unit { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); padding-right: 14px; }
+
+/* SLIDERS */
+.slider-group { margin-bottom: 16px; }
+.slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.slider-label { font-size: 11px; color: var(--text2); letter-spacing: 0.06em; }
+.slider-value { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+.slider-value.up { color: var(--green); }
+.slider-value.down { color: var(--red); }
+.slider-value.neutral { color: var(--text3); }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) var(--pct, 50%), var(--bg4) var(--pct, 50%));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--text); border: 3px solid var(--accent);
+  box-shadow: 0 0 10px rgba(124,106,247,0.4);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+input[type=range]:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 16px rgba(124,106,247,0.6);
+}
+
+/* BOTÓN ACTUALIZAR */
+.btn-update {
+  width: 100%; padding: 16px;
+  background: var(--accent2);
+  border: 1px solid rgba(124,106,247,0.3);
+  border-radius: 14px; cursor: pointer;
+  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--text); letter-spacing: 0.04em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  margin-bottom: 12px;
+}
+.btn-update:active { transform: scale(0.98); background: rgba(124,106,247,0.25); }
+.btn-update .btn-icon { font-size: 16px; }
+.btn-update .btn-spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--text); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-update.loading .btn-icon { display: none; }
+.btn-update.loading .btn-spinner { display: block; }
+
+/* NOTA */
+.note { font-size: 11px; color: var(--text3); line-height: 1.7; padding: 0 4px; }
+.note a { color: var(--accent); text-decoration: none; }
+
+/* DATOS DE REFERENCIA */
+.ref-bar {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.ref-bar strong { color: var(--text2); font-weight: 500; }
+
+/* BOTTOM PADDING ya incluido en body */
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="glow"></div>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <span class="logo-name">Mi Fondo · Renta 4</span>
+      <span class="logo-fund">Vanguard <span>S&P 500</span></span>
+    </div>
+    <div class="last-update">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="last-update-text">Sin datos</span>
+    </div>
+  </header>
+
+  <!-- VALORACIÓN PRINCIPAL -->
+  <div class="main-card">
+    <div class="val-label">Valoración estimada</div>
+    <div class="val-main" id="val-main">—</div>
+    <div class="val-change neutral" id="val-change">Sin cambio</div>
+    <div class="nav-est-row">
+      <span class="nav-est-label">NAV estimado</span>
+      <span class="nav-est-val" id="nav-est-val">—</span>
+    </div>
+  </div>
+
+  <!-- STATS S&P Y EUR/USD -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">S&amp;P 500</div>
+      <div class="stat-val" id="sp-price">—</div>
+      <div class="stat-chg neutral" id="sp-chg">pendiente</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">EUR / USD</div>
+      <div class="stat-val" id="fx-price">—</div>
+      <div class="stat-chg neutral" id="fx-chg">pendiente</div>
+    </div>
+  </div>
+
+  <!-- BOTÓN ACTUALIZAR -->
+  <button class="btn-update" id="btn-update" onclick="abrirClaude()">
+    <span class="btn-icon">⟳</span>
+    <span class="btn-spinner"></span>
+    Actualizar con cierre de hoy
+  </button>
+
+  <!-- MI POSICIÓN -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('posicion')">
+      <span class="section-title">Mi posición</span>
+      <span class="section-arrow open" id="arrow-posicion">▼</span>
+    </div>
+    <div class="section-body" id="body-posicion">
+      <div class="field-group">
+        <label class="field-label">Participaciones</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="partic" value="919.12" step="0.01" min="0" inputmode="decimal" oninput="guardarYCalcular()">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">NAV base (€ / participación)</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="nav-base" value="69.1972" step="0.0001" min="0" inputmode="decimal" oninput="guardarYCalcular()">
+          <span class="field-unit">€</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AJUSTE MANUAL -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('ajuste')">
+      <span class="section-title">Ajuste manual</span>
+      <span class="section-arrow" id="arrow-ajuste">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-ajuste">
+      <div class="ref-bar" id="ref-bar">
+        Referencia: <strong id="ref-fecha">—</strong> · S&amp;P 500: <strong id="ref-sp">6.782,81</strong> · EUR/USD: <strong id="ref-fx">1,1662</strong>
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">S&amp;P 500 variación</span>
+          <span class="slider-value neutral" id="sp-adj-val">+0,0%</span>
+        </div>
+        <input type="range" id="sp-adj" min="-10" max="10" step="0.1" value="0" oninput="onSlider(this, 'sp-adj-val'); calcular()">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">EUR/USD variación</span>
+          <span class="slider-value neutral" id="fx-adj-val">+0,0%</span>
+        </div>
+        <input type="range" id="fx-adj" min="-3" max="3" step="0.1" value="0" oninput="onSlider(this, 'fx-adj-val'); calcular()">
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTA -->
+  <p class="note">
+    Pulsa <strong style="color:var(--text2)">Actualizar</strong> tras el cierre de Wall Street (~22:00h en verano). Te abre Claude para buscar los datos y actualizar la calculadora. Edita participaciones y NAV cuando hagas una aportación mensual.
+  </p>
+</div>
+
+<script>
+// --- ESTADO ---
+let state = {
+  spPct: 0, fxPct: 0,
+  spPrice: null, fxPrice: null,
+  fecha: null, loaded: false
+};
+
+// --- PERSISTENCIA ---
+function guardarPosicion() {
+  localStorage.setItem('partic', document.getElementById('partic').value);
+  localStorage.setItem('navBase', document.getElementById('nav-base').value);
+}
+function cargarPosicion() {
+  const p = localStorage.getItem('partic');
+  const n = localStorage.getItem('navBase');
+  if (p) document.getElementById('partic').value = p;
+  if (n) document.getElementById('nav-base').value = n;
+}
+function guardarYCalcular() { guardarPosicion(); calcular(); }
+
+// --- FORMATO ---
+function fmtEur(n) {
+  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+function fmtNum(n, d) {
+  return n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+// --- SLIDER ---
+function onSlider(el, outId) {
+  const v = parseFloat(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  const el2 = document.getElementById(outId);
+  el2.textContent = (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  el2.className = 'slider-value ' + (v > 0 ? 'up' : v < 0 ? 'down' : 'neutral');
+}
+
+// --- CÁLCULO ---
+function calcular() {
+  const partic = parseFloat(document.getElementById('partic').value) || 0;
+  const navBase = parseFloat(document.getElementById('nav-base').value) || 0;
+  const valBase = partic * navBase;
+
+  const spAdj = parseFloat(document.getElementById('sp-adj').value) || 0;
+  const fxAdj = parseFloat(document.getElementById('fx-adj').value) || 0;
+
+  const spTotal = state.spPct + spAdj;
+  const fxTotal = state.fxPct + fxAdj;
+
+  const newNAV = navBase * (1 + spTotal / 100) * (1 - fxTotal / 100);
+  const newVal = newNAV * partic;
+  const diff = newVal - valBase;
+  const diffPct = valBase > 0 ? (diff / valBase) * 100 : 0;
+
+  // Valoración principal
+  const valMainEl = document.getElementById('val-main');
+  valMainEl.textContent = fmtEur(newVal);
+  valMainEl.className = 'val-main ' + (diff > 0.01 ? 'up' : diff < -0.01 ? 'down' : '');
+
+  // Badge cambio
+  const chgEl = document.getElementById('val-change');
+  if (Math.abs(diff) < 0.01) {
+    chgEl.textContent = 'Sin cambio';
+    chgEl.className = 'val-change neutral';
+  } else {
+    const sign = diff > 0 ? '+' : '';
+    chgEl.textContent = sign + fmtEur(diff) + '  (' + sign + fmtNum(diffPct, 2) + '%)';
+    chgEl.className = 'val-change ' + (diff > 0 ? 'up' : 'down');
+  }
+
+  // NAV estimado
+  document.getElementById('nav-est-val').textContent = fmtNum(newNAV, 4) + ' €';
+}
+
+// --- APLICAR DATOS DE MERCADO ---
+function aplicarDatosMercado(spPct, fxPct, spPrice, fxPrice, fecha) {
+  state.spPct = spPct;
+  state.fxPct = fxPct;
+  state.spPrice = spPrice;
+  state.fxPrice = fxPrice;
+  state.fecha = fecha;
+  state.loaded = true;
+
+  // S&P 500
+  const spPriceEl = document.getElementById('sp-price');
+  spPriceEl.textContent = spPrice ? fmtNum(spPrice, 2) : '—';
+  const spChgEl = document.getElementById('sp-chg');
+  spChgEl.textContent = (spPct >= 0 ? '+' : '') + fmtNum(spPct, 2) + '%';
+  spChgEl.className = 'stat-chg ' + (spPct > 0 ? 'up' : spPct < 0 ? 'down' : 'neutral');
+
+  // EUR/USD
+  const fxPriceEl = document.getElementById('fx-price');
+  fxPriceEl.textContent = fxPrice ? fmtNum(fxPrice, 4) : '—';
+  const fxChgEl = document.getElementById('fx-chg');
+  fxChgEl.textContent = (fxPct >= 0 ? '+' : '') + fmtNum(fxPct, 3) + '%';
+  fxChgEl.className = 'stat-chg ' + (fxPct > 0 ? 'up' : fxPct < 0 ? 'down' : 'neutral');
+
+  // Status
+  document.getElementById('status-dot').className = 'status-dot live';
+  document.getElementById('last-update-text').textContent = fecha || 'Actualizado';
+
+  // Referencia bar
+  document.getElementById('ref-fecha').textContent = fecha || '—';
+  if (spPrice) document.getElementById('ref-sp').textContent = fmtNum(spPrice, 2);
+  if (fxPrice) document.getElementById('ref-fx').textContent = fmtNum(fxPrice, 4);
+
+  // Guardar en localStorage
+  localStorage.setItem('marketData', JSON.stringify({ spPct, fxPct, spPrice, fxPrice, fecha, ts: Date.now() }));
+
+  // Reset sliders
+  document.getElementById('sp-adj').value = 0;
+  document.getElementById('fx-adj').value = 0;
+  onSlider(document.getElementById('sp-adj'), 'sp-adj-val');
+  onSlider(document.getElementById('fx-adj'), 'fx-adj-val');
+
+  calcular();
+}
+
+// --- CARGAR DATOS GUARDADOS ---
+function cargarDatosGuardados() {
+  const raw = localStorage.getItem('marketData');
+  if (!raw) return false;
+  try {
+    const d = JSON.parse(raw);
+    const horas = (Date.now() - d.ts) / 3600000;
+    if (horas > 30) return false; // datos de más de 30h, ignorar
+    aplicarDatosMercado(d.spPct, d.fxPct, d.spPrice, d.fxPrice, d.fecha);
+    return true;
+  } catch(e) { return false; }
+}
+
+// --- ABRIR CLAUDE PARA ACTUALIZAR ---
+function abrirClaude() {
+  const partic = document.getElementById('partic').value;
+  const nav = document.getElementById('nav-base').value;
+  const msg = encodeURIComponent(
+    `Actualiza la calculadora del fondo Vanguard con el cierre real de hoy del S&P 500 y EUR/USD. Mis datos: ${partic} participaciones, NAV base ${nav} €. Busca los valores reales de cierre y genera la calculadora actualizada.`
+  );
+  window.open(`https://claude.ai/new?q=${msg}`, '_blank');
+}
+
+// --- TOGGLE SECCIÓN ---
+function toggleSection(id) {
+  const body = document.getElementById('body-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  const isOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
+
+// --- INIT SLIDERS (posición visual) ---
+function initSliders() {
+  ['sp-adj', 'fx-adj'].forEach(id => {
+    const el = document.getElementById(id);
+    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+    el.style.setProperty('--pct', pct + '%');
+  });
+}
+
+// --- ARRANQUE ---
+cargarPosicion();
+initSliders();
+const cargado = cargarDatosGuardados();
+if (!cargado) {
+  // Datos por defecto conocidos (cierre 8 abril 2026)
+  aplicarDatosMercado(2.51, 0.43, 6782.81, 1.1662, '8 abr 2026');
+}
+calcular();
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// Exponer función para que Claude pueda inyectar datos desde URL params
+const params = new URLSearchParams(window.location.search);
+if (params.get('sp') && params.get('fx')) {
+  aplicarDatosMercado(
+    parseFloat(params.get('sp')),
+    parseFloat(params.get('fx')),
+    parseFloat(params.get('spPrice')) || null,
+    parseFloat(params.get('fxPrice')) || null,
+    params.get('fecha') || 'Actualizado'
+  );
+}
+</script>
+</body>
+</html>

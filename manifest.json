@@ -1,0 +1,14 @@
+{
+  "name": "Vanguard S&P 500 — Mi Fondo",
+  "short_name": "Mi Fondo",
+  "description": "Calculadora de valoración del fondo Vanguard U.S. 500 en Renta 4",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
