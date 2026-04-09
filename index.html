@@ -185,6 +185,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
     <button class="btn btn-actualizar" id="btn-act" onclick="fetchMercado()">⟳ Actualizar datos</button>
     <button class="btn btn-guardar" onclick="guardarSnapshot()">✦ Guardar hoy</button>
   </div>
+  <p id="market-status" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-align:center;margin:-6px 0 10px;min-height:16px;"></p>
 
   <div class="section">
     <div class="section-header" onclick="toggleSection('posicion')">
@@ -347,8 +348,43 @@ function calcular(){
   }
 }
 
+// ── CONTROL HORARIO NYSE ──
+function estadoMercado(){
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const diaSemana=ny.getDay();
+  const mes=ny.getMonth()+1;
+  const dia=ny.getDate();
+  const anyo=ny.getFullYear();
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  if(diaSemana===0||diaSemana===6) return {ok:false,msg:'Mercado cerrado · fin de semana'};
+  const festivos=['1/1','7/4','12/25'];
+  if(festivos.includes(mes+'/'+dia)) return {ok:false,msg:'Mercado cerrado · festivo'};
+  function lunesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
+  function ultimoLunes(m){const d=new Date(anyo,m,0);while(d.getDay()!==1)d.setDate(d.getDate()-1);return d.getDate();}
+  function juevesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===4){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
+  const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)}];
+  if(fm.some(f=>f.m===mes&&f.d===dia)) return {ok:false,msg:'Mercado cerrado · festivo NYSE'};
+  const abre=9*60+30,cierra=16*60;
+  if(horaNY>=abre&&horaNY<cierra){
+    const r=cierra-horaNY;
+    return {ok:false,msg:'Sesión abierta · cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)'};
+  }
+  return {ok:true,msg:'Cierre disponible'};
+}
+
+function actualizarEstadoBoton(){
+  const btn=document.getElementById('btn-act');
+  const info=document.getElementById('market-status');
+  const est=estadoMercado();
+  if(est.ok){btn.disabled=false;btn.style.opacity='1';if(info)info.textContent='';}
+  else{btn.disabled=true;btn.style.opacity='0.45';if(info)info.textContent=est.msg;}
+}
+
 // ── FETCH AUTOMÁTICO ALPHA VANTAGE ──
 async function fetchMercado(){
+  const est=estadoMercado();
+  if(!est.ok){toast('⏳ '+est.msg);return;}
   const btn=document.getElementById('btn-act');
   btn.disabled=true;
   btn.innerHTML='<span class="spin">⟳</span> Obteniendo datos...';
@@ -548,6 +584,8 @@ if(!cargado){ setStatus('','Pulsa Actualizar para cargar datos'); }
 calcular();
 renderHistorial();
 renderGrafica();
+actualizarEstadoBoton();
+setInterval(actualizarEstadoBoton,60000);
 window.addEventListener('resize', renderGrafica);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
