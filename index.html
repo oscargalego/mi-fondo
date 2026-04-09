@@ -256,7 +256,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 
   <div class="chart-section">
     <div style="margin-bottom:12px;"><span class="section-title">Evolución desde punto cero</span></div>
-    <div id="chart-empty" class="chart-empty">Guarda el primer snapshot para ver la gráfica</div>
+    <div id="chart-empty" class="chart-empty" style="display:none">Guarda el primer snapshot para ver la gráfica</div>
     <canvas id="chart-canvas" style="display:none"></canvas>
     <div class="chart-legend" id="chart-legend" style="display:none">
       <div class="chart-leg-item"><div class="chart-leg-dot" style="background:#7c6af7"></div>Valoración</div>
@@ -566,10 +566,15 @@ function renderHistorial(){
 }
 
 function renderGrafica(){
-  const hist=cargarHistorial();
+  const histRaw=cargarHistorial();
+  // Punto cero fijo: 8 abril 2026, valoración base real
+  const puntoOrigen={fecha:'2026-04-08',val:63600.53,origen:true};
+  // Añadir si no existe ya
+  const hist=[puntoOrigen,...histRaw.filter(h=>h.fecha!=='2026-04-08')].sort((a,b)=>a.fecha>b.fecha?1:-1);
   const canvas=document.getElementById('chart-canvas');
   const empty=document.getElementById('chart-empty');
   const legend=document.getElementById('chart-legend');
+  // Mostrar gráfica siempre (ya tenemos el punto origen)
   if(hist.length<1){canvas.style.display='none';empty.style.display='block';legend.style.display='none';return;}
   canvas.style.display='block';empty.style.display='none';legend.style.display='flex';
   const dpr=window.devicePixelRatio||1;
@@ -608,7 +613,17 @@ function renderGrafica(){
   ctx.beginPath();ctx.strokeStyle=lv>=puntoBase?'#7c6af7':'#ff4d6d';ctx.lineWidth=2;ctx.lineJoin='round';
   datos.forEach((d,i)=>{if(i===0)ctx.moveTo(xOf(i),yOf(d.val));else ctx.lineTo(xOf(i),yOf(d.val));});
   ctx.stroke();
-  datos.forEach((d,i)=>{ctx.beginPath();ctx.arc(xOf(i),yOf(d.val),d.proj?4:3,0,Math.PI*2);ctx.fillStyle=d.proj?'rgba(124,106,247,0.5)':(d.val>=puntoBase?'#7c6af7':'#ff4d6d');ctx.fill();});
+  datos.forEach((d,i)=>{
+    ctx.beginPath();
+    const r=d.origen?5:d.proj?4:3;
+    ctx.arc(xOf(i),yOf(d.val),r,0,Math.PI*2);
+    ctx.fillStyle=d.origen?'#f0b429':d.proj?'rgba(124,106,247,0.5)':(d.val>=puntoBase?'#7c6af7':'#ff4d6d');
+    ctx.fill();
+    if(d.origen){
+      ctx.beginPath();ctx.arc(xOf(i),yOf(d.val),r+3,0,Math.PI*2);
+      ctx.strokeStyle='rgba(240,180,41,0.3)';ctx.lineWidth=1.5;ctx.stroke();
+    }
+  });
   ctx.fillStyle='#55556a';ctx.font='10px DM Mono,monospace';ctx.textAlign='center';
   const idxs=datos.length<=3?datos.map((_,i)=>i):[0,Math.floor((datos.length-1)/2),datos.length-1];
   idxs.forEach(i=>ctx.fillText(fmtFecha(datos[i].fecha),xOf(i),H-8));
