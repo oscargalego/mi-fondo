@@ -137,6 +137,15 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 .modal-btn:active{transform:scale(0.97);}
 .modal-btn.si{background:rgba(0,229,160,0.1);border-color:rgba(0,229,160,0.3);color:var(--green);}
 .modal-btn.no{background:var(--bg3);border-color:var(--border);color:var(--text2);}
+
+/* BACKUP */
+.backup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.btn-backup{width:100%;padding:12px 10px;border-radius:12px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform 0.1s;border:1px solid;}
+.btn-backup:active{transform:scale(0.97);}
+.btn-exp{background:rgba(240,180,41,0.08);border-color:rgba(240,180,41,0.25);color:var(--gold);}
+.btn-imp{background:rgba(124,106,247,0.08);border-color:rgba(124,106,247,0.25);color:var(--accent);}
+.backup-info{font-size:11px;color:var(--text3);line-height:1.6;margin-top:10px;}
+#imp-file{display:none;}
 </style>
 </head>
 <body>
@@ -265,6 +274,24 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
     </div>
   </div>
 
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('backup')">
+      <span class="section-title">Copia de seguridad</span>
+      <span class="section-arrow" id="arrow-backup">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-backup">
+      <div class="backup-row">
+        <button class="btn-backup btn-exp" onclick="exportarDatos()">↑ Exportar datos</button>
+        <button class="btn-backup btn-imp" onclick="document.getElementById('imp-file').click()">↓ Importar datos</button>
+      </div>
+      <input type="file" id="imp-file" accept=".json" onchange="importarDatos(event)">
+      <p class="backup-info">
+        <strong style="color:var(--text2)">Exportar</strong> genera un archivo JSON con tu historial, posición y configuración. Guárdalo en Google Drive, WhatsApp o donde prefieras.<br><br>
+        <strong style="color:var(--text2)">Importar</strong> restaura todos tus datos desde ese archivo. Úsalo si cambias de móvil o reinstalás la app.
+      </p>
+    </div>
+  </div>
   <p class="note">Pulsa <strong style="color:var(--text2)">Actualizar datos</strong> tras el cierre de Wall Street (~22:00h). Los datos se obtienen automáticamente. Pulsa <strong style="color:var(--green)">Guardar hoy</strong> para registrar y construir la gráfica histórica.</p>
 </div>
 
@@ -606,6 +633,74 @@ function initSliders(){
   });
 }
 
+
+
+// ── COPIA DE SEGURIDAD ──
+function exportarDatos(){
+  const datos = {
+    version: 1,
+    fecha: new Date().toISOString(),
+    posicion: {
+      partic: localStorage.getItem('partic'),
+      navBase: localStorage.getItem('navBase'),
+      costeTotal: localStorage.getItem('costeTotal')
+    },
+    historial: cargarHistorial(),
+    ultimaAportacion: localStorage.getItem('ultimaAportacion') || '',
+    marketData: localStorage.getItem('marketData') || ''
+  };
+  const json = JSON.stringify(datos, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const hoy = new Date().toISOString().split('T')[0];
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mifondo-backup-'+hoy+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Datos exportados correctamente');
+}
+
+function importarDatos(event){
+  const file = event.target.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const datos = JSON.parse(e.target.result);
+      if(!datos.version || !datos.posicion) throw new Error('Formato incorrecto');
+
+      // Restaurar posición
+      if(datos.posicion.partic) localStorage.setItem('partic', datos.posicion.partic);
+      if(datos.posicion.navBase) localStorage.setItem('navBase', datos.posicion.navBase);
+      if(datos.posicion.costeTotal) localStorage.setItem('costeTotal', datos.posicion.costeTotal);
+
+      // Restaurar historial
+      if(datos.historial && Array.isArray(datos.historial)){
+        guardarHistorial(datos.historial);
+      }
+
+      // Restaurar aportación
+      if(datos.ultimaAportacion) localStorage.setItem('ultimaAportacion', datos.ultimaAportacion);
+
+      // Restaurar market data
+      if(datos.marketData) localStorage.setItem('marketData', datos.marketData);
+
+      // Recargar interfaz
+      cargarPosicion();
+      cargarDatosCache();
+      calcular();
+      renderHistorial();
+      renderGrafica();
+      toast('✓ Datos restaurados correctamente');
+    } catch(err){
+      toast('⚠ Error al importar: archivo no válido');
+      console.error(err);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
 
 // ── APORTACIÓN MENSUAL ──
 const APORTACION_DIA = 3;
