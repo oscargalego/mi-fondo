@@ -34,7 +34,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:20p
 .last-update{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:right;line-height:1.6;}
 .status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--text3);margin-right:4px;vertical-align:middle;}
 .status-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-dot.loading{background:var(--gold);box-shadow:0 0 6px var(--gold);animation:pulse 0.6s infinite;}
+.status-dot.error{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
 .main-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:12px;position:relative;overflow:hidden;}
 .main-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.4;}
@@ -68,13 +70,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:20p
 .plus-eur{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;}
 .plus-card.total .plus-eur{font-size:24px;}
 .plus-pct{font-family:'DM Mono',monospace;font-size:12px;margin-top:3px;}
-.c-gold{color:var(--gold);}.c-green{color:var(--green);}.c-red{color:var(--red);}.c-accent{color:var(--accent);}.c-muted{color:var(--text2);}
+.c-gold{color:var(--gold);}.c-green{color:var(--green);}.c-red{color:var(--red);}.c-muted{color:var(--text2);}
 
 .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .btn{width:100%;padding:14px 10px;border-radius:14px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:7px;transition:transform 0.1s,background 0.2s;border:1px solid;}
 .btn:active{transform:scale(0.97);}
 .btn-actualizar{background:var(--accent2);border-color:rgba(124,106,247,0.3);}
+.btn-actualizar:disabled{opacity:0.5;cursor:not-allowed;}
 .btn-guardar{background:rgba(0,229,160,0.08);border-color:rgba(0,229,160,0.25);color:var(--green);}
+.spin{display:inline-block;animation:rotar 0.8s linear infinite;}
+@keyframes rotar{to{transform:rotate(360deg)}}
 
 .section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;user-select:none;}
@@ -96,7 +101,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:20p
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;outline:none;cursor:pointer;background:linear-gradient(to right,var(--accent) var(--pct,50%),var(--bg4) var(--pct,50%));}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-shadow:0 0 10px rgba(124,106,247,0.4);transition:transform 0.1s;}
 input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
-.ref-chip{display:inline-block;font-size:11px;background:var(--bg3);color:var(--text3);padding:2px 8px;border-radius:6px;margin-bottom:12px;font-family:'DM Mono',monospace;}
 
 .chart-section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
 .chart-empty{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);text-align:center;padding:40px 0;}
@@ -150,12 +154,12 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
     <div class="stat-card">
       <div class="stat-label">S&amp;P 500</div>
       <div class="stat-val" id="sp-price">—</div>
-      <div class="stat-chg neutral" id="sp-chg">pendiente</div>
+      <div class="stat-chg neutral" id="sp-chg">—</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">EUR / USD</div>
       <div class="stat-val" id="fx-price">—</div>
-      <div class="stat-chg neutral" id="fx-chg">pendiente</div>
+      <div class="stat-chg neutral" id="fx-chg">—</div>
     </div>
   </div>
 
@@ -166,7 +170,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
       <div class="plus-pct c-gold" id="plus-total-pct">—</div>
     </div>
     <div class="plus-card" id="hoy-card">
-      <div class="plus-label">Variación hoy vs base</div>
+      <div class="plus-label">Variación vs base</div>
       <div class="plus-eur c-muted" id="plus-hoy-eur">—</div>
       <div class="plus-pct c-muted" id="plus-hoy-pct">—</div>
     </div>
@@ -178,7 +182,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
   </div>
 
   <div class="btn-row">
-    <button class="btn btn-actualizar" onclick="abrirClaude()">⟳ Actualizar datos</button>
+    <button class="btn btn-actualizar" id="btn-act" onclick="fetchMercado()">⟳ Actualizar datos</button>
     <button class="btn btn-guardar" onclick="guardarSnapshot()">✦ Guardar hoy</button>
   </div>
 
@@ -215,22 +219,19 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
       <span class="section-arrow" id="arrow-ajuste">▼</span>
     </div>
     <div class="section-body collapsed" id="body-ajuste">
-      <div class="ref-chip">Ref: <span id="ref-fecha">—</span> · S&P <span id="ref-sp">6.782,81</span> · EUR/USD <span id="ref-fx">1,1662</span></div>
       <div class="slider-group">
-        <div class="slider-header"><span class="slider-label">S&amp;P 500 variación</span><span class="slider-value neutral" id="sp-adj-val">+0,0%</span></div>
+        <div class="slider-header"><span class="slider-label">S&amp;P 500 ajuste extra</span><span class="slider-value neutral" id="sp-adj-val">+0,0%</span></div>
         <input type="range" id="sp-adj" min="-10" max="10" step="0.1" value="0" oninput="onSlider(this,'sp-adj-val');calcular()">
       </div>
       <div class="slider-group">
-        <div class="slider-header"><span class="slider-label">EUR/USD variación</span><span class="slider-value neutral" id="fx-adj-val">+0,0%</span></div>
+        <div class="slider-header"><span class="slider-label">EUR/USD ajuste extra</span><span class="slider-value neutral" id="fx-adj-val">+0,0%</span></div>
         <input type="range" id="fx-adj" min="-3" max="3" step="0.1" value="0" oninput="onSlider(this,'fx-adj-val');calcular()">
       </div>
     </div>
   </div>
 
   <div class="chart-section">
-    <div class="section-header" style="margin-bottom:12px;cursor:default;">
-      <span class="section-title">Evolución desde punto cero</span>
-    </div>
+    <div style="margin-bottom:12px;"><span class="section-title">Evolución desde punto cero</span></div>
     <div id="chart-empty" class="chart-empty">Guarda el primer snapshot para ver la gráfica</div>
     <canvas id="chart-canvas" style="display:none"></canvas>
     <div class="chart-legend" id="chart-legend" style="display:none">
@@ -249,34 +250,40 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
     </div>
   </div>
 
-  <p class="note">Pulsa <strong style="color:var(--text2)">Actualizar datos</strong> tras el cierre de Wall Street (~22:00h). Pulsa <strong style="color:var(--green)">Guardar hoy</strong> para registrar la valoración del día y construir la gráfica. Actualiza participaciones, NAV y coste cuando hagas una aportación mensual.</p>
+  <p class="note">Pulsa <strong style="color:var(--text2)">Actualizar datos</strong> tras el cierre de Wall Street (~22:00h). Los datos se obtienen automáticamente. Pulsa <strong style="color:var(--green)">Guardar hoy</strong> para registrar y construir la gráfica histórica.</p>
 </div>
 
 <script>
-let state={spPct:0,fxPct:0,spPrice:null,fxPrice:null,fecha:null};
-let valActual=0;
+const API_KEY = 'XKA975Q0ABJDW5VI';
+let state = {spPct:0, fxPct:0, spPrice:null, fxPrice:null, fecha:null};
+let valActual = 0;
 
 function guardarPosicion(){
-  localStorage.setItem('partic',document.getElementById('partic').value);
-  localStorage.setItem('navBase',document.getElementById('nav-base').value);
-  localStorage.setItem('costeTotal',document.getElementById('coste-total').value);
+  localStorage.setItem('partic', document.getElementById('partic').value);
+  localStorage.setItem('navBase', document.getElementById('nav-base').value);
+  localStorage.setItem('costeTotal', document.getElementById('coste-total').value);
 }
 function cargarPosicion(){
-  const p=localStorage.getItem('partic'),n=localStorage.getItem('navBase'),c=localStorage.getItem('costeTotal');
-  if(p)document.getElementById('partic').value=p;
-  if(n)document.getElementById('nav-base').value=n;
-  if(c)document.getElementById('coste-total').value=c;
+  const p=localStorage.getItem('partic'), n=localStorage.getItem('navBase'), c=localStorage.getItem('costeTotal');
+  if(p) document.getElementById('partic').value=p;
+  if(n) document.getElementById('nav-base').value=n;
+  if(c) document.getElementById('coste-total').value=c;
 }
-function guardarYCalcular(){guardarPosicion();calcular();}
+function guardarYCalcular(){ guardarPosicion(); calcular(); }
 
-function fmtEur(n){return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
-function fmtNum(n,d){return n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});}
-function fmtFecha(iso){return new Date(iso+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'});}
+function fmtEur(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtNum(n,d){ return n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtFecha(iso){ return new Date(iso+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
 
 function toast(msg){
   const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
+  el.textContent=msg; el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function setStatus(estado, texto){
+  document.getElementById('status-dot').className='status-dot '+estado;
+  document.getElementById('last-update-text').textContent=texto;
 }
 
 function onSlider(el,outId){
@@ -295,9 +302,7 @@ function calcular(){
   const valBase=partic*navBase;
   const spAdj=parseFloat(document.getElementById('sp-adj').value)||0;
   const fxAdj=parseFloat(document.getElementById('fx-adj').value)||0;
-  const spTotal=state.spPct+spAdj;
-  const fxTotal=state.fxPct+fxAdj;
-  const newNAV=navBase*(1+spTotal/100)*(1-fxTotal/100);
+  const newNAV=navBase*(1+(state.spPct+spAdj)/100)*(1-(state.fxPct+fxAdj)/100);
   const newVal=newNAV*partic;
   valActual=newVal;
   const diffHoy=newVal-valBase;
@@ -311,7 +316,6 @@ function calcular(){
   else{const s=diffHoy>0?'+':'';vc.textContent=s+fmtEur(diffHoy)+'  ('+s+fmtNum(diffHoyPct,2)+'%)';vc.className='val-change '+(diffHoy>0?'up':'down');}
   document.getElementById('nav-est-val').textContent=fmtNum(newNAV,4)+' €';
 
-  // Plusvalía total
   const plusTotalEur=newVal-costeTotal;
   const plusTotalPct=costeTotal>0?(plusTotalEur/costeTotal)*100:0;
   const ptEl=document.getElementById('plus-total-eur');
@@ -321,62 +325,124 @@ function calcular(){
   ppEl.textContent=(plusTotalPct>=0?'+':'')+fmtNum(plusTotalPct,2)+'%';
   ppEl.className='plus-pct '+(plusTotalEur>=0?'c-gold':'c-red');
 
-  // Variación hoy
   const phEl=document.getElementById('plus-hoy-eur');
   phEl.textContent=(diffHoy>=0?'+':'')+fmtEur(diffHoy);
   phEl.className='plus-eur '+(diffHoy>=0?'c-green':'c-red');
   const phpEl=document.getElementById('plus-hoy-pct');
   phpEl.textContent=(diffHoyPct>=0?'+':'')+fmtNum(diffHoyPct,2)+'%';
   phpEl.className='plus-pct '+(diffHoy>=0?'c-green':'c-red');
-  const hc=document.getElementById('hoy-card');
-  hc.className='plus-card '+(diffHoy>=0?'hoy-pos':'hoy-neg');
+  document.getElementById('hoy-card').className='plus-card '+(diffHoy>=0?'hoy-pos':'hoy-neg');
 
-  // Vs último guardado
   const hist=cargarHistorial();
   if(hist.length>0){
     const ult=hist[hist.length-1];
-    const diffAyer=newVal-ult.val;
-    const diffAyerPct=ult.val>0?(diffAyer/ult.val)*100:0;
+    const da=newVal-ult.val;
+    const daPct=ult.val>0?(da/ult.val)*100:0;
     const paEl=document.getElementById('plus-ayer-eur');
-    paEl.textContent=(diffAyer>=0?'+':'')+fmtEur(diffAyer);
-    paEl.className='plus-eur '+(diffAyer>=0?'c-green':'c-red');
+    paEl.textContent=(da>=0?'+':'')+fmtEur(da);
+    paEl.className='plus-eur '+(da>=0?'c-green':'c-red');
     const papEl=document.getElementById('plus-ayer-pct');
-    papEl.textContent=(diffAyerPct>=0?'+':'')+fmtNum(diffAyerPct,2)+'% vs '+fmtFecha(ult.fecha);
-    papEl.className='plus-pct '+(diffAyer>=0?'c-green':'c-red');
+    papEl.textContent=(daPct>=0?'+':'')+fmtNum(daPct,2)+'% vs '+fmtFecha(ult.fecha);
+    papEl.className='plus-pct '+(da>=0?'c-green':'c-red');
   }
 }
 
-function aplicarDatosMercado(spPct,fxPct,spPrice,fxPrice,fecha){
-  state={spPct,fxPct,spPrice,fxPrice,fecha};
-  document.getElementById('sp-price').textContent=spPrice?fmtNum(spPrice,2):'—';
-  document.getElementById('sp-chg').textContent=(spPct>=0?'+':'')+fmtNum(spPct,2)+'%';
-  document.getElementById('sp-chg').className='stat-chg '+(spPct>0?'up':spPct<0?'down':'neutral');
-  document.getElementById('fx-price').textContent=fxPrice?fmtNum(fxPrice,4):'—';
-  document.getElementById('fx-chg').textContent=(fxPct>=0?'+':'')+fmtNum(fxPct,3)+'%';
-  document.getElementById('fx-chg').className='stat-chg '+(fxPct>0?'up':fxPct<0?'down':'neutral');
-  document.getElementById('status-dot').className='status-dot live';
-  document.getElementById('last-update-text').textContent=fecha||'Actualizado';
-  document.getElementById('ref-fecha').textContent=fecha||'—';
-  if(spPrice)document.getElementById('ref-sp').textContent=fmtNum(spPrice,2);
-  if(fxPrice)document.getElementById('ref-fx').textContent=fmtNum(fxPrice,4);
-  localStorage.setItem('marketData',JSON.stringify({spPct,fxPct,spPrice,fxPrice,fecha,ts:Date.now()}));
-  document.getElementById('sp-adj').value=0;document.getElementById('fx-adj').value=0;
-  onSlider(document.getElementById('sp-adj'),'sp-adj-val');
-  onSlider(document.getElementById('fx-adj'),'fx-adj-val');
-  calcular();
+// ── FETCH AUTOMÁTICO ALPHA VANTAGE ──
+async function fetchMercado(){
+  const btn=document.getElementById('btn-act');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin">⟳</span> Obteniendo datos...';
+  setStatus('loading','Consultando mercados...');
+
+  try {
+    // SPY como proxy del S&P 500 (Alpha Vantage no tiene ^GSPC en plan gratis)
+    const [spRes, fxRes] = await Promise.all([
+      fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=${API_KEY}`),
+      fetch(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${API_KEY}`)
+    ]);
+
+    const spData = await spRes.json();
+    const fxData = await fxRes.json();
+
+    // Extraer S&P 500 (via SPY)
+    const quote = spData['Global Quote'];
+    if(!quote || !quote['05. price']) throw new Error('Sin datos S&P 500');
+    const spPrice = parseFloat(quote['05. price']);
+    const spPrev  = parseFloat(quote['08. previous close']);
+    const spPct   = ((spPrice - spPrev) / spPrev) * 100;
+
+    // Extraer EUR/USD
+    const fxRate = fxData['Realtime Currency Exchange Rate'];
+    if(!fxRate || !fxRate['5. Exchange Rate']) throw new Error('Sin datos EUR/USD');
+    const fxPrice = parseFloat(fxRate['5. Exchange Rate']);
+
+    // Alpha Vantage no da cierre anterior de forex en plan gratis → usamos dato guardado o 0
+    const fxPrev = state.fxPrice || fxPrice;
+    const fxPct  = ((fxPrice - fxPrev) / fxPrev) * 100;
+
+    // Aplicar
+    const ahora = new Date();
+    const fechaStr = ahora.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+    const horaStr  = ahora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+    state = {spPct, fxPct, spPrice, fxPrice, fecha: fechaStr};
+
+    // Actualizar UI S&P
+    document.getElementById('sp-price').textContent = fmtNum(spPrice,2);
+    document.getElementById('sp-chg').textContent   = (spPct>=0?'+':'')+fmtNum(spPct,2)+'%';
+    document.getElementById('sp-chg').className     = 'stat-chg '+(spPct>0?'up':spPct<0?'down':'neutral');
+
+    // Actualizar UI EUR/USD
+    document.getElementById('fx-price').textContent = fmtNum(fxPrice,4);
+    document.getElementById('fx-chg').textContent   = (fxPct>=0?'+':'')+fmtNum(fxPct,3)+'%';
+    document.getElementById('fx-chg').className     = 'stat-chg '+(fxPct>0?'up':fxPct<0?'down':'neutral');
+
+    // Reset sliders
+    document.getElementById('sp-adj').value=0; document.getElementById('fx-adj').value=0;
+    onSlider(document.getElementById('sp-adj'),'sp-adj-val');
+    onSlider(document.getElementById('fx-adj'),'fx-adj-val');
+
+    // Guardar en cache
+    localStorage.setItem('marketData', JSON.stringify({spPct,fxPct,spPrice,fxPrice,fecha:fechaStr,ts:Date.now()}));
+
+    setStatus('live', horaStr+' · '+fechaStr);
+    toast('✓ Datos actualizados');
+    calcular();
+
+  } catch(err) {
+    setStatus('error','Error al obtener datos');
+    toast('⚠ No se pudieron cargar los datos');
+    console.error(err);
+  }
+
+  btn.disabled=false;
+  btn.innerHTML='⟳ Actualizar datos';
 }
 
-function cargarDatosGuardados(){
+function cargarDatosCache(){
   const raw=localStorage.getItem('marketData');
-  if(!raw)return false;
-  try{const d=JSON.parse(raw);if((Date.now()-d.ts)/3600000>30)return false;aplicarDatosMercado(d.spPct,d.fxPct,d.spPrice,d.fxPrice,d.fecha);return true;}catch(e){return false;}
+  if(!raw) return false;
+  try{
+    const d=JSON.parse(raw);
+    if((Date.now()-d.ts)/3600000>28) return false; // más de 28h → ignorar
+    state={spPct:d.spPct, fxPct:d.fxPct, spPrice:d.spPrice, fxPrice:d.fxPrice, fecha:d.fecha};
+    document.getElementById('sp-price').textContent=d.spPrice?fmtNum(d.spPrice,2):'—';
+    document.getElementById('sp-chg').textContent=(d.spPct>=0?'+':'')+fmtNum(d.spPct,2)+'%';
+    document.getElementById('sp-chg').className='stat-chg '+(d.spPct>0?'up':d.spPct<0?'down':'neutral');
+    document.getElementById('fx-price').textContent=d.fxPrice?fmtNum(d.fxPrice,4):'—';
+    document.getElementById('fx-chg').textContent=(d.fxPct>=0?'+':'')+fmtNum(d.fxPct,3)+'%';
+    document.getElementById('fx-chg').className='stat-chg '+(d.fxPct>0?'up':d.fxPct<0?'down':'neutral');
+    setStatus('live', d.fecha||'Cacheado');
+    return true;
+  }catch(e){return false;}
 }
 
-function cargarHistorial(){try{return JSON.parse(localStorage.getItem('historial')||'[]');}catch(e){return[];}}
-function guardarHistorial(h){localStorage.setItem('historial',JSON.stringify(h));}
+// ── HISTORIAL ──
+function cargarHistorial(){ try{return JSON.parse(localStorage.getItem('historial')||'[]');}catch(e){return[];} }
+function guardarHistorial(h){ localStorage.setItem('historial',JSON.stringify(h)); }
 
 function guardarSnapshot(){
-  if(valActual<=0){toast('Calcula primero una valoración');return;}
+  if(valActual<=0){toast('Actualiza primero los datos');return;}
   const hist=cargarHistorial();
   const hoy=new Date().toISOString().split('T')[0];
   const idx=hist.findIndex(h=>h.fecha===hoy);
@@ -384,12 +450,12 @@ function guardarSnapshot(){
   if(idx>=0){hist[idx]=snap;toast('✦ Actualizado para hoy');}
   else{hist.push(snap);toast('✦ Guardado: '+fmtEur(valActual));}
   guardarHistorial(hist);
-  renderHistorial();renderGrafica();
+  renderHistorial(); renderGrafica();
 }
 
 function borrarSnapshot(fecha){
   guardarHistorial(cargarHistorial().filter(h=>h.fecha!==fecha));
-  renderHistorial();renderGrafica();toast('Eliminado');
+  renderHistorial(); renderGrafica(); toast('Eliminado');
 }
 
 function renderHistorial(){
@@ -425,20 +491,16 @@ function renderGrafica(){
   const puntoBase=partic*navBase;
   const datos=[...hist];
   if(valActual>0){const hoy=new Date().toISOString().split('T')[0];if(!datos.find(d=>d.fecha===hoy))datos.push({fecha:hoy,val:valActual,proj:true});}
-  const vals=datos.map(d=>d.val);
-  const allV=[...vals,puntoBase];
+  const allV=[...datos.map(d=>d.val),puntoBase];
   const pad=0.003;
-  const minV=Math.min(...allV)*(1-pad);
-  const maxV=Math.max(...allV)*(1+pad);
+  const minV=Math.min(...allV)*(1-pad);const maxV=Math.max(...allV)*(1+pad);
   const PAD={top:20,right:14,bottom:32,left:10};
   const cW=W-PAD.left-PAD.right;const cH=H-PAD.top-PAD.bottom;
   function xOf(i){return PAD.left+(datos.length>1?(i/(datos.length-1))*cW:cW/2);}
   function yOf(v){return PAD.top+cH-((v-minV)/(maxV-minV))*cH;}
-  // Línea base
   const yBase=yOf(puntoBase);
   ctx.beginPath();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(240,180,41,0.4)';ctx.lineWidth=1;
   ctx.moveTo(PAD.left,yBase);ctx.lineTo(PAD.left+cW,yBase);ctx.stroke();ctx.setLineDash([]);
-  // Área
   if(datos.length>1){
     ctx.beginPath();ctx.moveTo(xOf(0),yOf(datos[0].val));
     datos.forEach((d,i)=>{if(i>0)ctx.lineTo(xOf(i),yOf(d.val));});
@@ -449,22 +511,14 @@ function renderGrafica(){
     g.addColorStop(0,`rgba(${col},0.25)`);g.addColorStop(1,`rgba(${col},0)`);
     ctx.fillStyle=g;ctx.fill();
   }
-  // Línea
-  ctx.beginPath();
   const lv=datos.length>0?datos[datos.length-1].val:puntoBase;
-  ctx.strokeStyle=lv>=puntoBase?'#7c6af7':'#ff4d6d';ctx.lineWidth=2;ctx.lineJoin='round';
+  ctx.beginPath();ctx.strokeStyle=lv>=puntoBase?'#7c6af7':'#ff4d6d';ctx.lineWidth=2;ctx.lineJoin='round';
   datos.forEach((d,i)=>{if(i===0)ctx.moveTo(xOf(i),yOf(d.val));else ctx.lineTo(xOf(i),yOf(d.val));});
   ctx.stroke();
-  // Puntos
-  datos.forEach((d,i)=>{
-    ctx.beginPath();ctx.arc(xOf(i),yOf(d.val),d.proj?4:3,0,Math.PI*2);
-    ctx.fillStyle=d.proj?'rgba(124,106,247,0.5)':(d.val>=puntoBase?'#7c6af7':'#ff4d6d');ctx.fill();
-  });
-  // Etiquetas X
+  datos.forEach((d,i)=>{ctx.beginPath();ctx.arc(xOf(i),yOf(d.val),d.proj?4:3,0,Math.PI*2);ctx.fillStyle=d.proj?'rgba(124,106,247,0.5)':(d.val>=puntoBase?'#7c6af7':'#ff4d6d');ctx.fill();});
   ctx.fillStyle='#55556a';ctx.font='10px DM Mono,monospace';ctx.textAlign='center';
   const idxs=datos.length<=3?datos.map((_,i)=>i):[0,Math.floor((datos.length-1)/2),datos.length-1];
   idxs.forEach(i=>ctx.fillText(fmtFecha(datos[i].fecha),xOf(i),H-8));
-  // Etiqueta último valor
   if(datos.length>0){
     const last=datos[datos.length-1];const x=xOf(datos.length-1);const y=yOf(last.val);
     ctx.fillStyle=last.val>=puntoBase?'#7c6af7':'#ff4d6d';
@@ -473,19 +527,11 @@ function renderGrafica(){
   }
 }
 
-function abrirClaude(){
-  const partic=document.getElementById('partic').value;
-  const nav=document.getElementById('nav-base').value;
-  const msg=encodeURIComponent(`Actualiza la calculadora del fondo Vanguard con el cierre real de hoy del S&P 500 y EUR/USD. Mis datos: ${partic} participaciones, NAV base ${nav} €. Busca los valores reales de cierre y genera la calculadora actualizada.`);
-  window.open(`https://claude.ai/new?q=${msg}`,'_blank');
-}
-
 function toggleSection(id){
   const body=document.getElementById('body-'+id);const arrow=document.getElementById('arrow-'+id);
   const isOpen=!body.classList.contains('collapsed');
   body.classList.toggle('collapsed',isOpen);arrow.classList.toggle('open',!isOpen);
 }
-
 function initSliders(){
   ['sp-adj','fx-adj'].forEach(id=>{
     const el=document.getElementById(id);
@@ -494,29 +540,16 @@ function initSliders(){
   });
 }
 
-// ARRANQUE
-const _s=localStorage.getItem('marketData');
-if(_s){try{const _d=JSON.parse(_s);if(_d.spPct===2.51)localStorage.removeItem('marketData');}catch(e){}}
-cargarPosicion();initSliders();
-const cargado=cargarDatosGuardados();
-if(!cargado){
-  state.spPct=0;state.fxPct=0;
-  document.getElementById('sp-price').textContent='6.782,81';
-  document.getElementById('sp-chg').textContent='ref. cierre 8 abr';
-  document.getElementById('sp-chg').className='stat-chg neutral';
-  document.getElementById('fx-price').textContent='1,1662';
-  document.getElementById('fx-chg').textContent='ref. cierre 8 abr';
-  document.getElementById('fx-chg').className='stat-chg neutral';
-  document.getElementById('last-update-text').textContent='Pendiente cierre hoy';
-  document.getElementById('ref-sp').textContent='6.782,81';
-  document.getElementById('ref-fx').textContent='1,1662';
-  document.getElementById('ref-fecha').textContent='8 abr 2026';
-}
-calcular();renderHistorial();renderGrafica();
-window.addEventListener('resize',renderGrafica);
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-const params=new URLSearchParams(window.location.search);
-if(params.get('sp')&&params.get('fx')){aplicarDatosMercado(parseFloat(params.get('sp')),parseFloat(params.get('fx')),parseFloat(params.get('spPrice'))||null,parseFloat(params.get('fxPrice'))||null,params.get('fecha')||'Actualizado');}
+// ── ARRANQUE ──
+cargarPosicion();
+initSliders();
+const cargado=cargarDatosCache();
+if(!cargado){ setStatus('','Pulsa Actualizar para cargar datos'); }
+calcular();
+renderHistorial();
+renderGrafica();
+window.addEventListener('resize', renderGrafica);
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
