@@ -123,6 +123,20 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 .note{font-size:11px;color:var(--text3);line-height:1.7;padding:0 4px;margin-bottom:24px;}
 .toast{position:fixed;bottom:calc(var(--safe-bottom) + 90px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--text);opacity:0;transition:opacity 0.3s,transform 0.3s;pointer-events:none;z-index:100;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* MODAL APORTACIÓN */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:100%;max-width:340px;}
+.modal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+.modal-amount{font-family:'DM Mono',monospace;font-size:32px;font-weight:500;color:var(--green);text-align:center;margin-bottom:6px;}
+.modal-label{font-size:11px;color:var(--text3);text-align:center;margin-bottom:20px;}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-btn{padding:14px;border-radius:12px;border:1px solid;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:transform 0.1s;}
+.modal-btn:active{transform:scale(0.97);}
+.modal-btn.si{background:rgba(0,229,160,0.1);border-color:rgba(0,229,160,0.3);color:var(--green);}
+.modal-btn.no{background:var(--bg3);border-color:var(--border);color:var(--text2);}
 </style>
 </head>
 <body>
@@ -349,6 +363,21 @@ function calcular(){
 }
 
 // ── CONTROL HORARIO NYSE ──
+function viernesSanto(anyo){
+  // Algoritmo de Butcher para calcular Pascua
+  const a=anyo%19,b=Math.floor(anyo/100),c=anyo%100;
+  const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const mes=Math.floor((h+l-7*m+114)/31);
+  const dia=((h+l-7*m+114)%31)+1;
+  // Pascua encontrada, Viernes Santo = 2 días antes
+  const pascua=new Date(anyo,mes-1,dia);
+  pascua.setDate(pascua.getDate()-2);
+  return {m:pascua.getMonth()+1, d:pascua.getDate()};
+}
+
 function estadoMercado(){
   const ahora=new Date();
   const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
@@ -363,7 +392,8 @@ function estadoMercado(){
   function lunesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
   function ultimoLunes(m){const d=new Date(anyo,m,0);while(d.getDay()!==1)d.setDate(d.getDate()-1);return d.getDate();}
   function juevesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===4){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
-  const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)}];
+  const vs=viernesSanto(anyo);
+  const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)},{m:vs.m,d:vs.d}];
   if(fm.some(f=>f.m===mes&&f.d===dia)) return {ok:false,msg:'Mercado cerrado · festivo NYSE'};
   const abre=9*60+30,cierra=16*60;
   if(horaNY>=abre&&horaNY<cierra){
@@ -576,6 +606,57 @@ function initSliders(){
   });
 }
 
+
+// ── APORTACIÓN MENSUAL ──
+const APORTACION_DIA = 3;
+const APORTACION_EUR = 300;
+
+function comprobarAportacion(){
+  const hoy = new Date();
+  const diaHoy = hoy.getDate();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  const ultimaAportacion = localStorage.getItem('ultimaAportacion') || '';
+  const pospuesta = localStorage.getItem('aportacionPospuesta') || '';
+
+  // Ya se registró este mes
+  if(ultimaAportacion === mesAnyo) return;
+
+  // Calcular si hay aportación pendiente
+  // Es día 3 o posterior (y no se ha registrado ni pospuesto definitivamente este mes)
+  if(diaHoy >= APORTACION_DIA && pospuesta !== mesAnyo) {
+    const diasTarde = diaHoy - APORTACION_DIA;
+    const sub = diasTarde === 0
+      ? 'Es día 3 del mes. ¿Quieres registrar tu aportación periódica de '+APORTACION_EUR+' € y actualizar tu posición?'
+      : 'El día 3 de este mes no abriste la app. ¿Quieres registrar ahora tu aportación periódica de '+APORTACION_EUR+' €?';
+    document.getElementById('modal-sub').textContent = sub;
+    document.getElementById('modal-aportacion').classList.remove('hidden');
+  }
+}
+
+function confirmarAportacion(){
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  // Sumar al coste total
+  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
+  const nuevoCosto = costeActual + APORTACION_EUR;
+  document.getElementById('coste-total').value = nuevoCosto;
+  guardarPosicion();
+  calcular();
+  localStorage.setItem('ultimaAportacion', mesAnyo);
+  localStorage.removeItem('aportacionPospuesta');
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  toast('✦ Aportación de '+APORTACION_EUR+' € registrada');
+}
+
+function posponerAportacion(){
+  // Posponer hasta el próximo día que abra la app (mismo mes)
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  localStorage.setItem('aportacionPospuesta', mesAnyo);
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  toast('Recordatorio cancelado para este mes');
+}
+
 // ── ARRANQUE ──
 cargarPosicion();
 initSliders();
@@ -586,8 +667,24 @@ renderHistorial();
 renderGrafica();
 actualizarEstadoBoton();
 setInterval(actualizarEstadoBoton,60000);
+comprobarAportacion();
 window.addEventListener('resize', renderGrafica);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+
+<!-- MODAL APORTACIÓN MENSUAL -->
+<div class="modal-overlay hidden" id="modal-aportacion">
+  <div class="modal">
+    <div class="modal-title">Aportación mensual</div>
+    <div class="modal-sub" id="modal-sub">Es día 3 del mes. ¿Quieres registrar tu aportación periódica de 300 € y actualizar tu posición?</div>
+    <div class="modal-amount">+300 €</div>
+    <div class="modal-label">Se sumará al coste total de la inversión</div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarAportacion()">Sí, añadir</button>
+      <button class="modal-btn no" onclick="posponerAportacion()">Ahora no</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
