@@ -890,6 +890,28 @@ function posponerAportacion(){
   toast('Te preguntaré de nuevo mañana');
 }
 
+// ── CARGA DESDE URL — debe ejecutarse PRIMERO antes del arranque ──
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('partic')||params.get('nav')||params.get('coste')){
+    const p=params.get('partic');
+    const n=params.get('nav');
+    const c=params.get('coste');
+    const fc=params.get('fechacierre');
+    // Guardar en localStorage ANTES de que cargarPosicion los lea
+    if(p&&parseFloat(p)>0) localStorage.setItem('partic', p);
+    if(n&&parseFloat(n)>0) localStorage.setItem('navBase', n);
+    if(c&&parseFloat(c)>0) localStorage.setItem('costeTotal', c);
+    if(fc) localStorage.setItem('fechaSnapshot', fc);
+    // Limpiar datos de mercado
+    localStorage.removeItem('marketData');
+    // Marcar que viene de URL para mostrar toast tras arranque
+    localStorage.setItem('_urlLoad', fc || '1');
+    // Limpiar URL sin recargar
+    window.history.replaceState({},'',window.location.pathname);
+  }
+})();
+
 // ── ARRANQUE ──
 fechaSnapshot = localStorage.getItem('fechaSnapshot') || null;
 cargarPosicion();
@@ -902,7 +924,22 @@ renderGrafica();
 actualizarEstadoBoton();
 setInterval(actualizarEstadoBoton,60000);
 comprobarAportacion();
-// Avisar si hay datos pendientes de aportación
+
+// Avisar si viene de enlace de Renta 4
+const _urlLoad = localStorage.getItem('_urlLoad');
+if(_urlLoad){
+  localStorage.removeItem('_urlLoad');
+  const fc = fechaSnapshot;
+  const textoFecha = fc ? 'Datos del '+fmtFecha(fc)+' · listo para cierre' : 'Datos de Renta 4 · listo para cierre';
+  setStatus('live', textoFecha);
+  setTimeout(()=>{
+    const msg = fc
+      ? '✓ Datos aplicados · "Guardar hoy" registrará el '+fmtFecha(fc)
+      : '✓ Datos de Renta 4 aplicados correctamente';
+    toast(msg);
+  },600);
+}
+
 if(localStorage.getItem('aportacionDatosPendientes')==='true'){
   setTimeout(()=>{ toast('⚠ Pendiente: actualiza participaciones y NAV en Mi posición'); },1500);
 }
@@ -911,49 +948,6 @@ if(localStorage.getItem('extDatosPendientes')==='true'){
 }
 window.addEventListener('resize', renderGrafica);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-
-// ── CARGA DESDE URL (enviada por Claude tras analizar captura Renta 4) ──
-(function(){
-  const params=new URLSearchParams(window.location.search);
-  if(params.get('partic')||params.get('nav')||params.get('coste')){
-    const p=params.get('partic');
-    const n=params.get('nav');
-    const c=params.get('coste');
-    const fc=params.get('fechacierre'); // fecha real del cierre (ej: 2026-04-09)
-    if(p&&parseFloat(p)>0) document.getElementById('partic').value=parseFloat(p);
-    if(n&&parseFloat(n)>0) document.getElementById('nav-base').value=parseFloat(n);
-    if(c&&parseFloat(c)>0) document.getElementById('coste-total').value=parseFloat(c);
-    // Guardar fecha de snapshot correcta
-    if(fc) {
-      fechaSnapshot=fc;
-      localStorage.setItem('fechaSnapshot',fc);
-    }
-    state={spPct:0,fxPct:0,spPrice:null,fxPrice:null,fecha:null};
-    localStorage.removeItem('marketData');
-    document.getElementById('sp-price').textContent='—';
-    document.getElementById('sp-chg').textContent='—';
-    document.getElementById('sp-chg').className='stat-chg neutral';
-    document.getElementById('fx-price').textContent='—';
-    document.getElementById('fx-chg').textContent='—';
-    document.getElementById('fx-chg').className='stat-chg neutral';
-    document.getElementById('sp-adj').value=0;
-    document.getElementById('fx-adj').value=0;
-    onSlider(document.getElementById('sp-adj'),'sp-adj-val');
-    onSlider(document.getElementById('fx-adj'),'fx-adj-val');
-    // Mostrar qué fecha se usará al guardar
-    const textoFecha = fc ? 'Datos del '+fmtFecha(fc)+' · listo para cierre' : 'Datos de Renta 4 · listo para cierre';
-    setStatus('',textoFecha);
-    guardarPosicion();
-    calcular();
-    window.history.replaceState({},'',window.location.pathname);
-    setTimeout(()=>{
-      const msg = fc
-        ? '✓ Datos aplicados · "Guardar hoy" registrará el '+fmtFecha(fc)
-        : '✓ Datos de Renta 4 aplicados correctamente';
-      toast(msg);
-    },500);
-  }
-})();
 </script>
 
 
