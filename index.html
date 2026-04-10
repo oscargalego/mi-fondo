@@ -215,6 +215,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
     <button class="btn btn-actualizar" id="btn-act" onclick="fetchMercado()">⟳ Actualizar datos</button>
     <button class="btn btn-guardar" onclick="guardarSnapshot()">✦ Guardar hoy</button>
   </div>
+  <button class="btn btn-reset-var" id="btn-reset-var" onclick="resetearVariacion()" style="width:100%;padding:11px;border-radius:12px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--text2);letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform 0.1s;border:1px solid var(--border);background:var(--bg3);margin-bottom:4px;">↺ Resetear variación de mercado</button>
   <p id="market-status" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-align:center;margin:-6px 0 10px;min-height:16px;"></p>
 
   <div class="section">
@@ -241,6 +242,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
           <span class="field-unit">€</span>
         </div>
       </div>
+      <button class="btn-backup btn-exp" style="margin-top:4px;width:100%;padding:12px;border-radius:12px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);color:var(--gold);" onclick="document.getElementById('ext-importe').value='';document.getElementById('modal-ext1').classList.remove('hidden')">+ Registrar aportación extraordinaria</button>
     </div>
   </div>
 
@@ -307,6 +309,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 const API_KEY = 'XKA975Q0ABJDW5VI';
 let state = {spPct:0, fxPct:0, spPrice:null, fxPrice:null, fecha:null};
 let valActual = 0;
+let fechaSnapshot = null; // fecha forzada para el snapshot (viene de Renta 4 vía URL)
 
 function guardarPosicion(){
   localStorage.setItem('partic', document.getElementById('partic').value);
@@ -545,13 +548,19 @@ function guardarHistorial(h){ localStorage.setItem('historial',JSON.stringify(h)
 function guardarSnapshot(){
   if(valActual<=0){toast('Actualiza primero los datos');return;}
   const hist=cargarHistorial();
-  const hoy=new Date().toISOString().split('T')[0];
-  const idx=hist.findIndex(h=>h.fecha===hoy);
-  const snap={fecha:hoy,val:Math.round(valActual*100)/100};
-  if(idx>=0){hist[idx]=snap;toast('✦ Actualizado para hoy');}
-  else{hist.push(snap);toast('✦ Guardado: '+fmtEur(valActual));}
+  const fechaUsar = fechaSnapshot || new Date().toISOString().split('T')[0];
+  const idx=hist.findIndex(h=>h.fecha===fechaUsar);
+  const snap={fecha:fechaUsar,val:Math.round(valActual*100)/100};
+  if(idx>=0){hist[idx]=snap;toast('✦ Actualizado · '+fmtFecha(fechaUsar));}
+  else{hist.push(snap);snap&&hist.sort((a,b)=>a.fecha>b.fecha?1:-1);toast('✦ Guardado · '+fmtFecha(fechaUsar));}
   guardarHistorial(hist);
   renderHistorial(); renderGrafica();
+  // Limpiar fecha forzada tras guardar
+  fechaSnapshot=null;
+  localStorage.removeItem('fechaSnapshot');
+  // Mostrar aviso si se guardó con fecha distinta a hoy
+  const hoy=new Date().toISOString().split('T')[0];
+  if(fechaUsar!==hoy) setTimeout(()=>toast('📅 Guardado con fecha '+fmtFecha(fechaUsar)+' (cierre oficial)'),1500);
 }
 
 function borrarSnapshot(fecha){
@@ -659,6 +668,61 @@ function initSliders(){
 
 
 
+
+// ── RESETEAR SOLO VARIACIÓN DE MERCADO ──
+function resetearVariacion(){
+  state = {spPct:0, fxPct:0, spPrice:null, fxPrice:null, fecha:null};
+  localStorage.removeItem('marketData');
+  document.getElementById('sp-price').textContent='—';
+  document.getElementById('sp-chg').textContent='—';
+  document.getElementById('sp-chg').className='stat-chg neutral';
+  document.getElementById('fx-price').textContent='—';
+  document.getElementById('fx-chg').textContent='—';
+  document.getElementById('fx-chg').className='stat-chg neutral';
+  document.getElementById('sp-adj').value=0;
+  document.getElementById('fx-adj').value=0;
+  onSlider(document.getElementById('sp-adj'),'sp-adj-val');
+  onSlider(document.getElementById('fx-adj'),'fx-adj-val');
+  setStatus('','Variación reseteada · actualiza tras el cierre');
+  calcular();
+  toast('↺ Variación reseteada a cero');
+}
+
+
+// ── APORTACIÓN EXTRAORDINARIA ──
+function confirmarExtPaso1(){
+  const importe = parseFloat(document.getElementById('ext-importe').value) || 0;
+  if(importe <= 0){ toast('Introduce un importe válido'); return; }
+  // Sumar al coste total
+  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
+  document.getElementById('coste-total').value = costeActual + importe;
+  guardarPosicion();
+  calcular();
+  document.getElementById('modal-ext1').classList.add('hidden');
+  document.getElementById('ext-partic').value = '';
+  document.getElementById('ext-nav').value = '';
+  document.getElementById('modal-ext2').classList.remove('hidden');
+  toast('✦ +'+fmtEur(importe)+' sumado al coste total');
+}
+
+function confirmarExtPaso2(){
+  const partic = document.getElementById('ext-partic').value;
+  const nav = document.getElementById('ext-nav').value;
+  if(partic && parseFloat(partic) > 0) document.getElementById('partic').value = partic;
+  if(nav && parseFloat(nav) > 0) document.getElementById('nav-base').value = nav;
+  guardarPosicion();
+  calcular();
+  localStorage.removeItem('extDatosPendientes');
+  document.getElementById('modal-ext2').classList.add('hidden');
+  toast('✦ Aportación extraordinaria registrada');
+}
+
+function aplazarExtPaso2(){
+  localStorage.setItem('extDatosPendientes','true');
+  document.getElementById('modal-ext2').classList.add('hidden');
+  toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme');
+}
+
 // ── RESET COMPLETO ──
 function resetPaso2(){
   document.getElementById('modal-reset1').classList.add('hidden');
@@ -765,47 +829,69 @@ function comprobarAportacion(){
   const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
   const ultimaAportacion = localStorage.getItem('ultimaAportacion') || '';
   const pospuesta = localStorage.getItem('aportacionPospuesta') || '';
-
-  // Ya se registró este mes
   if(ultimaAportacion === mesAnyo) return;
-
-  // Calcular si hay aportación pendiente
-  // Es día 3 o posterior (y no se ha registrado ni pospuesto definitivamente este mes)
-  if(diaHoy >= APORTACION_DIA && pospuesta !== mesAnyo) {
+  if(diaHoy >= APORTACION_DIA && pospuesta !== mesAnyo){
     const diasTarde = diaHoy - APORTACION_DIA;
     const sub = diasTarde === 0
-      ? 'Es día 3 del mes. ¿Quieres registrar tu aportación periódica de '+APORTACION_EUR+' € y actualizar tu posición?'
-      : 'El día 3 de este mes no abriste la app. ¿Quieres registrar ahora tu aportación periódica de '+APORTACION_EUR+' €?';
+      ? 'Es día 3 del mes. ¿Has realizado tu aportación periódica de '+APORTACION_EUR+' €?'
+      : 'El día 3 de este mes no abriste la app. ¿Has realizado ya tu aportación periódica de '+APORTACION_EUR+' €?';
     document.getElementById('modal-sub').textContent = sub;
     document.getElementById('modal-aportacion').classList.remove('hidden');
   }
 }
 
-function confirmarAportacion(){
+function confirmarAportacionPaso1(){
+  // Sumar 300€ al coste total
+  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
+  document.getElementById('coste-total').value = costeActual + APORTACION_EUR;
+  guardarPosicion();
+  calcular();
+  // Cerrar paso 1 y abrir paso 2
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  document.getElementById('ap-partic').value = '';
+  document.getElementById('ap-nav').value = '';
+  document.getElementById('modal-aportacion2').classList.remove('hidden');
+}
+
+function confirmarAportacionPaso2(){
   const hoy = new Date();
   const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
-  // Sumar al coste total
-  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
-  const nuevoCosto = costeActual + APORTACION_EUR;
-  document.getElementById('coste-total').value = nuevoCosto;
+  const partic = document.getElementById('ap-partic').value;
+  const nav = document.getElementById('ap-nav').value;
+  if(partic && parseFloat(partic) > 0){
+    document.getElementById('partic').value = partic;
+  }
+  if(nav && parseFloat(nav) > 0){
+    document.getElementById('nav-base').value = nav;
+  }
   guardarPosicion();
   calcular();
   localStorage.setItem('ultimaAportacion', mesAnyo);
   localStorage.removeItem('aportacionPospuesta');
-  document.getElementById('modal-aportacion').classList.add('hidden');
-  toast('✦ Aportación de '+APORTACION_EUR+' € registrada');
+  document.getElementById('modal-aportacion2').classList.add('hidden');
+  toast('✦ Aportación registrada correctamente');
+}
+
+function aplazarPaso2(){
+  // Cierra el modal pero marca la aportación como pendiente de datos
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  localStorage.setItem('ultimaAportacion', mesAnyo);
+  localStorage.setItem('aportacionDatosPendientes', 'true');
+  document.getElementById('modal-aportacion2').classList.add('hidden');
+  toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme');
 }
 
 function posponerAportacion(){
-  // Posponer hasta el próximo día que abra la app (mismo mes)
   const hoy = new Date();
   const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
   localStorage.setItem('aportacionPospuesta', mesAnyo);
   document.getElementById('modal-aportacion').classList.add('hidden');
-  toast('Recordatorio cancelado para este mes');
+  toast('Te preguntaré de nuevo mañana');
 }
 
 // ── ARRANQUE ──
+fechaSnapshot = localStorage.getItem('fechaSnapshot') || null;
 cargarPosicion();
 initSliders();
 const cargado=cargarDatosCache();
@@ -816,10 +902,104 @@ renderGrafica();
 actualizarEstadoBoton();
 setInterval(actualizarEstadoBoton,60000);
 comprobarAportacion();
+// Avisar si hay datos pendientes de aportación
+if(localStorage.getItem('aportacionDatosPendientes')==='true'){
+  setTimeout(()=>{ toast('⚠ Pendiente: actualiza participaciones y NAV en Mi posición'); },1500);
+}
+if(localStorage.getItem('extDatosPendientes')==='true'){
+  setTimeout(()=>{ toast('⚠ Aportación extraordinaria: actualiza participaciones y NAV'); },2500);
+}
 window.addEventListener('resize', renderGrafica);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ── CARGA DESDE URL (enviada por Claude tras analizar captura Renta 4) ──
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('partic')||params.get('nav')||params.get('coste')){
+    const p=params.get('partic');
+    const n=params.get('nav');
+    const c=params.get('coste');
+    const fc=params.get('fechacierre'); // fecha real del cierre (ej: 2026-04-09)
+    if(p&&parseFloat(p)>0) document.getElementById('partic').value=parseFloat(p);
+    if(n&&parseFloat(n)>0) document.getElementById('nav-base').value=parseFloat(n);
+    if(c&&parseFloat(c)>0) document.getElementById('coste-total').value=parseFloat(c);
+    // Guardar fecha de snapshot correcta
+    if(fc) {
+      fechaSnapshot=fc;
+      localStorage.setItem('fechaSnapshot',fc);
+    }
+    state={spPct:0,fxPct:0,spPrice:null,fxPrice:null,fecha:null};
+    localStorage.removeItem('marketData');
+    document.getElementById('sp-price').textContent='—';
+    document.getElementById('sp-chg').textContent='—';
+    document.getElementById('sp-chg').className='stat-chg neutral';
+    document.getElementById('fx-price').textContent='—';
+    document.getElementById('fx-chg').textContent='—';
+    document.getElementById('fx-chg').className='stat-chg neutral';
+    document.getElementById('sp-adj').value=0;
+    document.getElementById('fx-adj').value=0;
+    onSlider(document.getElementById('sp-adj'),'sp-adj-val');
+    onSlider(document.getElementById('fx-adj'),'fx-adj-val');
+    // Mostrar qué fecha se usará al guardar
+    const textoFecha = fc ? 'Datos del '+fmtFecha(fc)+' · listo para cierre' : 'Datos de Renta 4 · listo para cierre';
+    setStatus('',textoFecha);
+    guardarPosicion();
+    calcular();
+    window.history.replaceState({},'',window.location.pathname);
+    setTimeout(()=>{
+      const msg = fc
+        ? '✓ Datos aplicados · "Guardar hoy" registrará el '+fmtFecha(fc)
+        : '✓ Datos de Renta 4 aplicados correctamente';
+      toast(msg);
+    },500);
+  }
+})();
 </script>
 
+
+<!-- MODAL APORTACIÓN EXTRAORDINARIA - PASO 1 -->
+<div class="modal-overlay hidden" id="modal-ext1">
+  <div class="modal">
+    <div class="modal-title">Aportación extraordinaria</div>
+    <div class="modal-sub">Introduce el importe de la aportación extraordinaria que has realizado.</div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Importe aportado (€)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-importe" step="1" min="0" inputmode="decimal" placeholder="ej: 1000">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarExtPaso1()">Continuar</button>
+      <button class="modal-btn no" onclick="document.getElementById('modal-ext1').classList.add('hidden')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTACIÓN EXTRAORDINARIA - PASO 2 -->
+<div class="modal-overlay hidden" id="modal-ext2">
+  <div class="modal">
+    <div class="modal-title">Actualiza tu posición</div>
+    <div class="modal-sub">Introduce los nuevos datos que aparecen en Renta 4 tras procesar la aportación extraordinaria.</div>
+    <div class="field-group" style="margin-bottom:14px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Participaciones totales</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-partic" step="0.01" min="0" inputmode="decimal" placeholder="ej: 935,20">
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">NAV base (€ / participación)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-nav" step="0.0001" min="0" inputmode="decimal" placeholder="ej: 70,1500">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarExtPaso2()">Guardar</button>
+      <button class="modal-btn no" onclick="aplazarExtPaso2()">Lo pongo después</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL RESET PASO 1 -->
 <div class="modal-overlay hidden" id="modal-reset1">
@@ -846,16 +1026,41 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
   </div>
 </div>
 
-<!-- MODAL APORTACIÓN MENSUAL -->
+<!-- MODAL APORTACIÓN MENSUAL - PASO 1 -->
 <div class="modal-overlay hidden" id="modal-aportacion">
   <div class="modal">
     <div class="modal-title">Aportación mensual</div>
-    <div class="modal-sub" id="modal-sub">Es día 3 del mes. ¿Quieres registrar tu aportación periódica de 300 € y actualizar tu posición?</div>
+    <div class="modal-sub" id="modal-sub">Es día 3 del mes. ¿Has realizado tu aportación periódica de 300 €?</div>
     <div class="modal-amount">+300 €</div>
     <div class="modal-label">Se sumará al coste total de la inversión</div>
     <div class="modal-btns">
-      <button class="modal-btn si" onclick="confirmarAportacion()">Sí, añadir</button>
-      <button class="modal-btn no" onclick="posponerAportacion()">Ahora no</button>
+      <button class="modal-btn si" onclick="confirmarAportacionPaso1()">Sí, la he hecho</button>
+      <button class="modal-btn no" onclick="posponerAportacion()">Todavía no</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTACIÓN MENSUAL - PASO 2 -->
+<div class="modal-overlay hidden" id="modal-aportacion2">
+  <div class="modal">
+    <div class="modal-title">Actualiza tu posición</div>
+    <div class="modal-sub">Introduce los nuevos datos que aparecen en Renta 4 tras procesar la aportación.</div>
+    <div class="field-group" style="margin-bottom:14px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Participaciones totales</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ap-partic" step="0.01" min="0" inputmode="decimal" placeholder="ej: 923,45">
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">NAV base (€ / participación)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ap-nav" step="0.0001" min="0" inputmode="decimal" placeholder="ej: 69,8500">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarAportacionPaso2()">Guardar</button>
+      <button class="modal-btn no" onclick="aplazarPaso2()">Lo pongo después</button>
     </div>
   </div>
 </div>
