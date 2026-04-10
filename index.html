@@ -153,6 +153,20 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 .modal-reset .modal-title{color:var(--red);}
 .confirm-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:14px;color:var(--text);outline:none;margin:12px 0;transition:border-color 0.2s;}
 .confirm-input:focus{border-color:var(--red);}
+
+/* PROYECCIÓN */
+.proj-section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
+.proj-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+.proj-card{background:var(--bg3);border-radius:var(--border-radius-md,8px);padding:12px 14px;}
+.proj-card.full{grid-column:1/-1;}
+.proj-card-label{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.proj-card-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--text);}
+.proj-card-val.big{font-size:24px;color:var(--green);}
+.proj-card-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-top:3px;}
+.proj-canvas-wrap{position:relative;width:100%;height:220px;margin-bottom:12px;}
+.proj-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.proj-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+.proj-leg-dot{width:10px;height:3px;border-radius:2px;display:inline-block;}
 </style>
 </head>
 <body>
@@ -300,6 +314,83 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
         <strong style="color:var(--text2)">Exportar</strong> genera un archivo JSON con tu historial, posición y configuración. Guárdalo en Google Drive, WhatsApp o donde prefieras.<br><br>
         <strong style="color:var(--text2)">Importar</strong> restaura todos tus datos desde ese archivo. Úsalo si cambias de móvil o reinstalás la app.
       </p>
+    </div>
+  </div>
+
+  <div class="proj-section">
+    <div class="section-header" onclick="toggleSection('proyeccion')" style="margin-bottom:0;cursor:pointer;">
+      <span class="section-title">Proyección a futuro</span>
+      <span class="section-arrow" id="arrow-proyeccion">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-proyeccion" style="margin-top:16px;">
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Capital inicial</span>
+          <span class="slider-value neutral" id="proj-cap-val">64.053 €</span>
+        </div>
+        <input type="range" id="proj-cap" min="1000" max="300000" step="1000" value="64053" oninput="onSliderProjCapital(this,'proj-cap-val'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Rentabilidad anual esperada</span>
+          <span class="slider-value up" id="proj-rent-val">7,0%</span>
+        </div>
+        <input type="range" id="proj-rent" min="1" max="15" step="0.5" value="7" oninput="onSliderProj(this,'proj-rent-val','%'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Años de proyección</span>
+          <span class="slider-value neutral" id="proj-anos-val">20 años</span>
+        </div>
+        <input type="range" id="proj-anos" min="1" max="40" step="1" value="20" oninput="onSliderProjAnos(this,'proj-anos-val'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Aportación mensual</span>
+          <span class="slider-value neutral" id="proj-ap-val">300 €</span>
+        </div>
+        <input type="range" id="proj-ap" min="0" max="1000" step="50" value="300" oninput="onSliderProjEur(this,'proj-ap-val'); calcProyeccion()">
+      </div>
+
+      <div class="proj-legend">
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#00e5a0"></div>Capital total</div>
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#7c6af7"></div>Aportaciones</div>
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#f0b429;border-top:2px dashed #f0b429;background:none;height:0;width:14px;"></div>Invertido</div>
+      </div>
+
+      <div class="proj-canvas-wrap">
+        <canvas id="proj-chart" role="img" aria-label="Gráfica de proyección de inversión a futuro">Proyección de inversión futura.</canvas>
+      </div>
+
+      <div class="proj-grid">
+        <div class="proj-card full">
+          <div class="proj-card-label">Capital estimado final</div>
+          <div class="proj-card-val big" id="proj-total">—</div>
+          <div class="proj-card-sub" id="proj-total-sub">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Total invertido</div>
+          <div class="proj-card-val" id="proj-invertido">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Rentabilidad generada</div>
+          <div class="proj-card-val" style="color:var(--green)" id="proj-renta">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Multiplicador</div>
+          <div class="proj-card-val" id="proj-mult">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Rentabilidad total %</div>
+          <div class="proj-card-val" style="color:var(--green)" id="proj-pct">—</div>
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px;">* Proyección orientativa basada en rentabilidad anual compuesta constante. La rentabilidad pasada no garantiza resultados futuros. S&P 500: media histórica ~10% anual nominal, ~7% real ajustado a inflación.</p>
     </div>
   </div>
   <p class="note">Pulsa <strong style="color:var(--text2)">Actualizar datos</strong> tras el cierre de Wall Street (~22:00h). Los datos se obtienen automáticamente. Pulsa <strong style="color:var(--green)">Guardar hoy</strong> para registrar y construir la gráfica histórica.</p>
@@ -723,6 +814,162 @@ function aplazarExtPaso2(){
   toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme');
 }
 
+
+// ── PROYECCIÓN A FUTURO ──
+let projChart = null;
+
+function onSliderProjCapital(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toLocaleString('es-ES') + ' €';
+}
+
+function onSliderProj(el, outId, suffix){
+  const v = parseFloat(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toFixed(1) + suffix;
+}
+function onSliderProjAnos(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v + ' años';
+}
+function onSliderProjEur(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toLocaleString('es-ES') + ' €';
+}
+
+function calcProyeccion(){
+  const rentAnual = parseFloat(document.getElementById('proj-rent').value) / 100;
+  const anos = parseInt(document.getElementById('proj-anos').value);
+  const apMensual = parseFloat(document.getElementById('proj-ap').value);
+  const capitalInicial = parseFloat(document.getElementById('proj-cap').value) || 64053;
+  const costoInicial = capitalInicial;
+
+  const rentMensual = Math.pow(1 + rentAnual, 1/12) - 1;
+  const meses = anos * 12;
+
+  const labelsAnos = [];
+  const datosTotal = [];
+  const datosInvertido = [];
+  const datosAportaciones = [];
+
+  for(let a = 0; a <= anos; a++){
+    const m = a * 12;
+    const capitalCrecido = capitalInicial * Math.pow(1 + rentMensual, m);
+    const aportacionesFuturo = apMensual * ((Math.pow(1 + rentMensual, m) - 1) / rentMensual);
+    const totalAportado = costoInicial + apMensual * m;
+    const total = capitalCrecido + aportacionesFuturo;
+
+    labelsAnos.push(a === 0 ? 'Hoy' : '+' + a + 'a');
+    datosTotal.push(Math.round(total));
+    datosInvertido.push(Math.round(totalAportado));
+    datosAportaciones.push(Math.round(aportacionesFuturo));
+  }
+
+  const totalFinal = datosTotal[datosTotal.length - 1];
+  const invertidoFinal = datosInvertido[datosInvertido.length - 1];
+  const rentaFinal = totalFinal - invertidoFinal;
+  const pctFinal = ((totalFinal - invertidoFinal) / invertidoFinal) * 100;
+  const mult = totalFinal / costoInicial;
+
+  document.getElementById('proj-total').textContent = totalFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-total-sub').textContent = 'en ' + anos + ' años · ' + (rentAnual*100).toFixed(1) + '% anual';
+  document.getElementById('proj-invertido').textContent = invertidoFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-renta').textContent = '+' + rentaFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-mult').textContent = mult.toFixed(1) + 'x';
+  document.getElementById('proj-pct').textContent = '+' + pctFinal.toFixed(0) + '%';
+
+  // Filtrar para no mostrar demasiados puntos
+  const paso = anos <= 10 ? 1 : anos <= 20 ? 2 : 5;
+  const lFilt = labelsAnos.filter((_,i) => i % paso === 0);
+  const tFilt = datosTotal.filter((_,i) => i % paso === 0);
+  const iFilt = datosInvertido.filter((_,i) => i % paso === 0);
+  const aFilt = datosAportaciones.filter((_,i) => i % paso === 0);
+
+  if(projChart) projChart.destroy();
+  const ctx = document.getElementById('proj-chart');
+  projChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: lFilt,
+      datasets: [
+        {
+          label: 'Capital total',
+          data: tFilt,
+          borderColor: '#00e5a0',
+          backgroundColor: 'rgba(0,229,160,0.08)',
+          borderWidth: 2.5,
+          pointRadius: anos <= 15 ? 4 : 2,
+          pointBackgroundColor: '#00e5a0',
+          fill: true,
+          tension: 0.4,
+          order: 1
+        },
+        {
+          label: 'Aportaciones acumuladas',
+          data: aFilt,
+          borderColor: '#7c6af7',
+          backgroundColor: 'rgba(124,106,247,0.06)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.4,
+          order: 2
+        },
+        {
+          label: 'Total invertido',
+          data: iFilt,
+          borderColor: '#f0b429',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17,17,24,0.95)',
+          titleColor: '#f0f0f5',
+          bodyColor: '#8888a0',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString('es-ES') + ' €'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#55556a', font: { size: 10 }, maxTicksLimit: 8 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#55556a',
+            font: { size: 10 },
+            callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M €' : (v/1000).toFixed(0)+'k €'
+          }
+        }
+      }
+    }
+  });
+}
+
 // ── RESET COMPLETO ──
 function resetPaso2(){
   document.getElementById('modal-reset1').classList.add('hidden');
@@ -947,6 +1194,25 @@ if(localStorage.getItem('extDatosPendientes')==='true'){
   setTimeout(()=>{ toast('⚠ Aportación extraordinaria: actualiza participaciones y NAV'); },2500);
 }
 window.addEventListener('resize', renderGrafica);
+// Init sliders proyección
+// Sincronizar capital inicial con valoración actual
+(function(){
+  const partic = parseFloat(localStorage.getItem('partic')) || 919.12;
+  const nav = parseFloat(localStorage.getItem('navBase')) || 69.1972;
+  const capitalReal = Math.round(partic * nav);
+  const sliderCap = document.getElementById('proj-cap');
+  if(sliderCap && capitalReal > 0){
+    sliderCap.value = Math.min(capitalReal, 300000);
+    const el = document.getElementById('proj-cap-val');
+    if(el) el.textContent = Math.min(capitalReal,300000).toLocaleString('es-ES') + ' €';
+  }
+})();
+['proj-cap','proj-rent','proj-anos','proj-ap'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  const pct=((parseFloat(el.value)-parseFloat(el.min))/(parseFloat(el.max)-parseFloat(el.min)))*100;
+  el.style.setProperty('--pct',pct+'%');
+});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 
