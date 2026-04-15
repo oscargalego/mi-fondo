@@ -507,29 +507,72 @@ function viernesSanto(anyo){
   return {m:pascua.getMonth()+1, d:pascua.getDate()};
 }
 
-function estadoMercado(){
-  const ahora=new Date();
-  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+function diaHabilNY(ny){
+  // Devuelve true si es día hábil en NYSE
   const diaSemana=ny.getDay();
   const mes=ny.getMonth()+1;
   const dia=ny.getDate();
   const anyo=ny.getFullYear();
-  const horaNY=ny.getHours()*60+ny.getMinutes();
-  if(diaSemana===0||diaSemana===6) return {ok:false,msg:'Mercado cerrado · fin de semana'};
+  if(diaSemana===0||diaSemana===6) return false;
   const festivos=['1/1','7/4','12/25'];
-  if(festivos.includes(mes+'/'+dia)) return {ok:false,msg:'Mercado cerrado · festivo'};
+  if(festivos.includes(mes+'/'+dia)) return false;
   function lunesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
   function ultimoLunes(m){const d=new Date(anyo,m,0);while(d.getDay()!==1)d.setDate(d.getDate()-1);return d.getDate();}
   function juevesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===4){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
   const vs=viernesSanto(anyo);
   const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)},{m:vs.m,d:vs.d}];
-  if(fm.some(f=>f.m===mes&&f.d===dia)) return {ok:false,msg:'Mercado cerrado · festivo NYSE'};
-  const abre=9*60+30,cierra=16*60;
-  if(horaNY>=abre&&horaNY<cierra){
-    const r=cierra-horaNY;
-    return {ok:false,msg:'Sesión abierta · cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)'};
+  return !fm.some(f=>f.m===mes&&f.d===dia);
+}
+
+function claveUltimosCierre(){
+  // Genera una clave única para el último cierre de NYSE disponible
+  // Formato: YYYY-MM-DD del día cuyo cierre ya está disponible
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  const cierra=16*60;
+  // Si aún no ha cerrado hoy, el último cierre es el día hábil anterior
+  // Si ya cerró (>=16:00 NY), el último cierre es hoy (si es día hábil)
+  let diaRef = new Date(ny);
+  if(horaNY < cierra || !diaHabilNY(ny)){
+    // Retroceder al último día hábil
+    diaRef.setDate(diaRef.getDate()-1);
+    while(!diaHabilNY(diaRef)) diaRef.setDate(diaRef.getDate()-1);
   }
-  return {ok:true,msg:'Cierre disponible'};
+  return diaRef.getFullYear()+'-'+String(diaRef.getMonth()+1).padStart(2,'0')+'-'+String(diaRef.getDate()).padStart(2,'0');
+}
+
+function estadoMercado(){
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  const abre=9*60+30, cierra=16*60;
+
+  // Fin de semana o festivo
+  if(!diaHabilNY(ny)){
+    return {ok:false, msg:'Mercado cerrado · fin de semana o festivo'};
+  }
+
+  // Sesión abierta
+  if(horaNY>=abre && horaNY<cierra){
+    const r=cierra-horaNY;
+    return {ok:false, msg:'Sesión abierta · cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)'};
+  }
+
+  // Antes de abrir (madrugada NY) — bloquear hasta el cierre de hoy
+  if(horaNY<abre){
+    const r=abre-horaNY;
+    return {ok:false, msg:'Mercado abre en '+Math.floor(r/60)+'h '+(r%60)+'m · actualiza tras el cierre'};
+  }
+
+  // Ya cerró — comprobar si ya actualizamos este cierre
+  const clave=claveUltimosCierre();
+  const yaActualizado=localStorage.getItem('ultimaActualizacion')===clave;
+  if(yaActualizado){
+    return {ok:false, msg:'✓ Ya actualizado · próximo cierre mañana ~22:00h'};
+  }
+
+  return {ok:true, msg:'Cierre disponible · '+clave};
 }
 
 function actualizarEstadoBoton(){
@@ -550,68 +593,111 @@ async function fetchMercado(){
   setStatus('loading','Consultando mercados...');
 
   try {
-    // SPY como proxy del S&P 500 (Alpha Vantage no tiene ^GSPC en plan gratis)
+    // S&P 500 via Alpha Vantage (SPY proxy) + EUR/USD via Frankfurter (BCE)
+    // Frankfurter: pedimos últimos 2 días para calcular variación
+    const ayer = new Date(); ayer.setDate(ayer.getDate()-5); // 5 días atrás para cubrir fines de semana
+    const ayerStr = ayer.toISOString().split('T')[0];
     const [spRes, fxRes] = await Promise.all([
       fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=${API_KEY}`),
-      fetch(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=${API_KEY}`)
+      fetch(`https://api.frankfurter.dev/v1/${ayerStr}..?base=USD&symbols=EUR`)
     ]);
 
     const spData = await spRes.json();
     const fxData = await fxRes.json();
 
-    // Extraer S&P 500 (via SPY)
+    // Extraer S&P 500 via SPY
     const quote = spData['Global Quote'];
     if(!quote || !quote['05. price']) throw new Error('Sin datos S&P 500');
     const spPrice = parseFloat(quote['05. price']);
     const spPrev  = parseFloat(quote['08. previous close']);
     const spPct   = ((spPrice - spPrev) / spPrev) * 100;
 
-    // Extraer EUR/USD
-    const fxRate = fxData['Realtime Currency Exchange Rate'];
-    if(!fxRate || !fxRate['5. Exchange Rate']) throw new Error('Sin datos EUR/USD');
-    const fxPrice = parseFloat(fxRate['5. Exchange Rate']);
+    // Verificar que el dato de SPY es del cierre de hoy o del último día hábil
+    const spLatestDay = quote['07. latest trading day'];
+    const claveCierre = claveUltimosCierre();
+    if(spLatestDay && spLatestDay !== claveCierre){
+      // Alpha Vantage devuelve datos de un día distinto al último cierre esperado
+      throw new Error('Dato S&P 500 desactualizado: '+spLatestDay+' (esperado: '+claveCierre+')');
+    }
+    // Verificar que spPrice y spPrev son válidos
+    if(isNaN(spPrice) || isNaN(spPrev) || spPrev === 0) throw new Error('Datos S&P 500 inválidos');
 
-    // Alpha Vantage no da cierre anterior de forex en plan gratis → usamos dato guardado o 0
-    const fxPrev = state.fxPrice || fxPrice;
-    const fxPct  = ((fxPrice - fxPrev) / fxPrev) * 100;
+    // Extraer EUR/USD via Frankfurter (BCE)
+    if(!fxData || !fxData.rates) throw new Error('Sin datos EUR/USD');
+    const fechas = Object.keys(fxData.rates).sort();
+    if(fechas.length === 0) throw new Error('Sin datos EUR/USD');
+    const fechaFxHoy = fechas[fechas.length - 1];
+    const usdEurHoy = fxData.rates[fechaFxHoy].EUR;
 
-    // Aplicar
+    // Verificar que el dato de EUR/USD es reciente (máximo 3 días de diferencia)
+    const fechaFxDate = new Date(fechaFxHoy);
+    const hoyDate = new Date();
+    const diffDias = (hoyDate - fechaFxDate) / (1000*60*60*24);
+    if(diffDias > 5) throw new Error('Dato EUR/USD demasiado antiguo: '+fechaFxHoy);
+    if(isNaN(usdEurHoy) || usdEurHoy === 0) throw new Error('Dato EUR/USD inválido');
+
+    const fxPrice = parseFloat((1 / usdEurHoy).toFixed(6));
+
+    let fxPct = 0;
+    if(fechas.length >= 2){
+      const fechaAyer = fechas[fechas.length - 2];
+      const usdEurAyer = fxData.rates[fechaAyer].EUR;
+      const fxPriceAyer = 1 / usdEurAyer;
+      fxPct = ((fxPrice - fxPriceAyer) / fxPriceAyer) * 100;
+    } else if(state.fxPrice){
+      fxPct = ((fxPrice - state.fxPrice) / state.fxPrice) * 100;
+    }
+
+    // Verificación final: ambos datos deben ser coherentes
+    if(Math.abs(spPct) > 15) throw new Error('Variación S&P 500 sospechosa: '+spPct.toFixed(2)+'%');
+    if(Math.abs(fxPct) > 5) throw new Error('Variación EUR/USD sospechosa: '+fxPct.toFixed(2)+'%');
+
     const ahora = new Date();
     const fechaStr = ahora.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
     const horaStr  = ahora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
 
     state = {spPct, fxPct, spPrice, fxPrice, fecha: fechaStr};
 
-    // Actualizar UI S&P
     document.getElementById('sp-price').textContent = fmtNum(spPrice,2);
     document.getElementById('sp-chg').textContent   = (spPct>=0?'+':'')+fmtNum(spPct,2)+'%';
     document.getElementById('sp-chg').className     = 'stat-chg '+(spPct>0?'up':spPct<0?'down':'neutral');
 
-    // Actualizar UI EUR/USD
     document.getElementById('fx-price').textContent = fmtNum(fxPrice,4);
     document.getElementById('fx-chg').textContent   = (fxPct>=0?'+':'')+fmtNum(fxPct,3)+'%';
     document.getElementById('fx-chg').className     = 'stat-chg '+(fxPct>0?'up':fxPct<0?'down':'neutral');
 
-    // Reset sliders
     document.getElementById('sp-adj').value=0; document.getElementById('fx-adj').value=0;
     onSlider(document.getElementById('sp-adj'),'sp-adj-val');
     onSlider(document.getElementById('fx-adj'),'fx-adj-val');
 
-    // Guardar en cache
     localStorage.setItem('marketData', JSON.stringify({spPct,fxPct,spPrice,fxPrice,fecha:fechaStr,ts:Date.now()}));
 
     setStatus('live', horaStr+' · '+fechaStr);
     toast('✓ Datos actualizados');
     calcular();
+    // Marcar este cierre como actualizado — bloquea el botón hasta el próximo
+    localStorage.setItem('ultimaActualizacion', claveUltimosCierre());
+    actualizarEstadoBoton();
 
   } catch(err) {
-    setStatus('error','Error al obtener datos');
-    toast('⚠ No se pudieron cargar los datos');
+    // Reintento automático hasta 3 veces
+    if(!fetchMercado._intentos) fetchMercado._intentos=0;
+    fetchMercado._intentos++;
+    if(fetchMercado._intentos < 3){
+      setStatus('loading','Reintentando ('+fetchMercado._intentos+'/3)...');
+      setTimeout(()=>fetchMercado(), 3000);
+      return;
+    }
+    fetchMercado._intentos=0;
+    setStatus('error','Error al obtener datos · inténtalo de nuevo');
+    toast('⚠ No se pudieron cargar los datos tras 3 intentos');
     console.error(err);
   }
 
+  fetchMercado._intentos=0;
   btn.disabled=false;
   btn.innerHTML='⟳ Actualizar datos';
+  actualizarEstadoBoton();
 }
 
 function cargarDatosCache(){
