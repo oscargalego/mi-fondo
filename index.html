@@ -717,7 +717,25 @@ function calcular(){
 function viernesSanto(anyo){ const a=anyo%19,b=Math.floor(anyo/100),c=anyo%100; const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25); const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30; const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7; const m=Math.floor((a+11*h+22*l)/451); const mes=Math.floor((h+l-7*m+114)/31); const dia=((h+l-7*m+114)%31)+1; const pascua=new Date(anyo,mes-1,dia); pascua.setDate(pascua.getDate()-2); return {m:pascua.getMonth()+1, d:pascua.getDate()}; }
 function diaHabilNY(ny){ const diaSemana=ny.getDay(); const mes=ny.getMonth()+1; const dia=ny.getDate(); const anyo=ny.getFullYear(); if(diaSemana===0||diaSemana===6) return false; const festivos=['1/1','7/4','12/25']; if(festivos.includes(mes+'/'+dia)) return false; function lunesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;} function ultimoLunes(m){const d=new Date(anyo,m,0);while(d.getDay()!==1)d.setDate(d.getDate()-1);return d.getDate();} function juevesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===4){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;} const vs=viernesSanto(anyo); const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)},{m:vs.m,d:vs.d}]; return !fm.some(f=>f.m===mes&&f.d===dia); }
 function claveUltimosCierre(){ const ahora=new Date(); const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'})); const horaNY=ny.getHours()*60+ny.getMinutes(); const cierra=16*60; let diaRef=new Date(ny); if(horaNY<cierra||!diaHabilNY(ny)){diaRef.setDate(diaRef.getDate()-1);while(!diaHabilNY(diaRef))diaRef.setDate(diaRef.getDate()-1);} return diaRef.getFullYear()+'-'+String(diaRef.getMonth()+1).padStart(2,'0')+'-'+String(diaRef.getDate()).padStart(2,'0'); }
-function estadoMercado(){ const ahora=new Date(); const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'})); const horaNY=ny.getHours()*60+ny.getMinutes(); const abre=9*60+30, cierra=16*60; if(!diaHabilNY(ny)){return {ok:false, msg:'Mercado cerrado · fin de semana o festivo'};} if(horaNY>=abre&&horaNY<cierra){const r=cierra-horaNY;return {ok:false, msg:'Sesión abierta · cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)');} if(horaNY<abre){const r=abre-horaNY;return {ok:false, msg:'Mercado abre en '+Math.floor(r/60)+'h '+(r%60)+'m · actualiza tras el cierre'};} const clave=claveUltimosCierre(); const yaActualizado=localStorage.getItem('ultimaActualizacion')===clave; if(yaActualizado){return {ok:false, msg:'✓ Ya actualizado · próximo cierre mañana ~22:00h'};} return {ok:true, msg:'Cierre disponible · '+clave}; }
+function estadoMercado(){
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  const abre=9*60+30, cierra=16*60;
+  if(!diaHabilNY(ny)) return {ok:false, msg:'Mercado cerrado \xb7 fin de semana o festivo'};
+  if(horaNY>=abre&&horaNY<cierra){
+    const r=cierra-horaNY;
+    return {ok:false, msg:'Sesi\xf3n abierta \xb7 cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)'};
+  }
+  if(horaNY<abre){
+    const r=abre-horaNY;
+    return {ok:false, msg:'Mercado abre en '+Math.floor(r/60)+'h '+(r%60)+'m \xb7 actualiza tras el cierre'};
+  }
+  const clave=claveUltimosCierre();
+  const yaActualizado=localStorage.getItem('ultimaActualizacion')===clave;
+  if(yaActualizado) return {ok:false, msg:'\u2713 Ya actualizado \xb7 pr\xf3ximo cierre ma\xf1ana ~22:00h'};
+  return {ok:true, msg:'Cierre disponible \xb7 '+clave};
+}
 function actualizarEstadoBoton(){ const btn=document.getElementById('btn-act'); const info=document.getElementById('market-status'); const est=estadoMercado(); if(est.ok){btn.disabled=false;btn.style.opacity='1';if(info)info.textContent='';}else{btn.disabled=true;btn.style.opacity='0.45';if(info)info.textContent=est.msg;} }
 
 async function fetchMercado(){
