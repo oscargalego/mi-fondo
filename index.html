@@ -310,7 +310,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
       <div class="field-group">
         <label class="field-label">Coste total de la inversión (€)</label>
         <div class="field-input-wrap">
-          <input class="field-input" type="number" id="coste-total" value="61800" step="1" min="0" inputmode="decimal" oninput="guardarYCalcular()">
+          <input class="field-input" type="number" id="coste-total" value="62100" step="1" min="0" inputmode="decimal" oninput="guardarYCalcular()">
           <span class="field-unit">€</span>
         </div>
       </div>
@@ -465,7 +465,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
         <div class="db-field"><label>NAV (€/part.)</label><input type="number" id="db-in-nav" placeholder="71.38" step="0.0001"></div>
         <div class="db-field"><label>Participaciones</label><input type="number" id="db-in-partic" placeholder="919.12" step="0.01"></div>
         <div class="db-field"><label>Valor real Renta4 (€)</label><input type="number" id="db-in-val" placeholder="opcional" step="0.01" class="wide"></div>
-        <div class="db-field"><label>Coste total (€)</label><input type="number" id="db-in-coste" placeholder="61800" step="1"></div>
+        <div class="db-field"><label>Coste total (€)</label><input type="number" id="db-in-coste" placeholder="62100" step="1"></div>
         <button class="db-btn-add" onclick="dbAddSnap()">+ Añadir</button>
       </div>
       <div class="db-hint">El valor real de Renta 4 tiene prioridad sobre NAV × participaciones.</div>
@@ -627,6 +627,7 @@ const DB_SNAPS_FIJOS = [
   {fecha:'2026-04-14', nav:70.4020, partic:919.12, coste:61800, val:64707.89, tipo:'cierre', label:'Cierre'},
   {fecha:'2026-04-15', nav:71.0362, partic:919.12, coste:61800, val:65290.79, tipo:'cierre', label:'Cierre'},
   {fecha:'2026-04-16', nav:71.3821, partic:919.12, coste:61800, val:65608.72, tipo:'cierre', label:'Cierre'},
+  {fecha:'2026-05-05', nav:74.0135, partic:923.17, coste:62100, val:68327.04, tipo:'suscripcion', label:'Aportación mensual +300 €'},
 ].map(s=>({...s, nav:s.nav||Math.round((s.val/s.partic)*10000)/10000}));
 
 const DB_APORTACIONES = [
@@ -637,6 +638,7 @@ const DB_APORTACIONES = [
   {fecha:'2026-02-04', concepto:'Suscripción mensual', partic:4.32, importe:300, valor:306.88},
   {fecha:'2026-03-04', concepto:'Suscripción mensual', partic:4.26, importe:300, valor:302.61},
   {fecha:'2026-04-02', concepto:'Suscripción mensual', partic:4.41, importe:300, valor:313.27},
+  {fecha:'2026-05-05', concepto:'Suscripción mensual', partic:4.05, importe:300, valor:299.75},
 ];
 
 // ── TAB NAVIGATION ──
@@ -673,7 +675,10 @@ function onSlider(el,outId){ const v=parseFloat(el.value); const pct=((v-parseFl
 function calcular(){
   const partic=parseFloat(document.getElementById('partic').value)||0;
   const navBase=parseFloat(document.getElementById('nav-base').value)||0;
-  const costeTotal=parseFloat(document.getElementById('coste-total').value)||(partic*navBase);
+  // Fuente de verdad: localStorage. Fallback al input si no existe.
+  const costeLS=parseFloat(localStorage.getItem('costeTotal'));
+  const costeInput=parseFloat(document.getElementById('coste-total').value);
+  const costeTotal=(!isNaN(costeLS)&&costeLS>0)?costeLS:(!isNaN(costeInput)&&costeInput>0?costeInput:(partic*navBase));
   const valBase=partic*navBase;
   const spAdj=parseFloat(document.getElementById('sp-adj').value)||0;
   const fxAdj=parseFloat(document.getElementById('fx-adj').value)||0;
@@ -888,7 +893,39 @@ function exportarDatos(){ const datos={version:1,fecha:new Date().toISOString(),
 function importarDatos(event){ const file=event.target.files[0]; if(!file){return;} const reader=new FileReader(); reader.onload=function(e){try{const datos=JSON.parse(e.target.result); if(!datos.version||!datos.posicion) throw new Error('Formato incorrecto'); if(datos.posicion.partic) localStorage.setItem('partic',datos.posicion.partic); if(datos.posicion.navBase) localStorage.setItem('navBase',datos.posicion.navBase); if(datos.posicion.costeTotal) localStorage.setItem('costeTotal',datos.posicion.costeTotal); if(datos.historial&&Array.isArray(datos.historial)) guardarHistorial(datos.historial); if(datos.ultimaAportacion) localStorage.setItem('ultimaAportacion',datos.ultimaAportacion); if(datos.marketData) localStorage.setItem('marketData',datos.marketData); cargarPosicion(); cargarDatosCache(); calcular(); renderHistorial(); renderGrafica(); toast('✓ Datos restaurados correctamente');}catch(err){toast('⚠ Error al importar: archivo no válido');console.error(err);} event.target.value='';}; reader.readAsText(file); }
 
 const APORTACION_DIA=3; const APORTACION_EUR=300;
-function comprobarAportacion(){ const hoy=new Date(); const diaHoy=hoy.getDate(); const mesAnyo=hoy.getFullYear()+'-'+(hoy.getMonth()+1); const ultimaAportacion=localStorage.getItem('ultimaAportacion')||''; const pospuesta=localStorage.getItem('aportacionPospuesta')||''; if(ultimaAportacion===mesAnyo) return; if(diaHoy>=APORTACION_DIA&&pospuesta!==mesAnyo){const diasTarde=diaHoy-APORTACION_DIA; const sub=diasTarde===0?'Es día 3 del mes. ¿Has realizado tu aportación periódica de '+APORTACION_EUR+' €?':'El día 3 de este mes no abriste la app. ¿Has realizado ya tu aportación periódica de '+APORTACION_EUR+' €?'; document.getElementById('modal-sub').textContent=sub; document.getElementById('modal-aportacion').classList.remove('hidden');} }
+
+// Devuelve true si DB_SNAPS_FIJOS contiene una entrada tipo 'suscripcion'
+// que cae dentro del año-mes pasado en formato 'YYYY-M' o 'YYYY-MM'.
+function aportacionRegistradaEn(mesAnyo){
+  if(typeof DB_SNAPS_FIJOS==='undefined') return false;
+  const [y,m]=mesAnyo.split('-');
+  const prefijo=y+'-'+String(m).padStart(2,'0'); // p.ej. '2026-05'
+  return DB_SNAPS_FIJOS.some(s=>s.tipo==='suscripcion'&&s.fecha.startsWith(prefijo));
+}
+
+function comprobarAportacion(){
+  const hoy=new Date();
+  const diaHoy=hoy.getDate();
+  const mesAnyo=hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  const ultimaAportacion=localStorage.getItem('ultimaAportacion')||'';
+  const pospuesta=localStorage.getItem('aportacionPospuesta')||'';
+  if(ultimaAportacion===mesAnyo) return;
+
+  // Auto-detección: si los datos históricos fijos ya incluyen una aportación
+  // tipo 'suscripcion' del mes en curso, lo damos por hecho y no preguntamos.
+  // Esto cubre el caso de aportaciones añadidas directamente al código (como mayo 2026).
+  if(aportacionRegistradaEn(mesAnyo)){
+    localStorage.setItem('ultimaAportacion',mesAnyo);
+    return;
+  }
+
+  if(diaHoy>=APORTACION_DIA&&pospuesta!==mesAnyo){
+    const diasTarde=diaHoy-APORTACION_DIA;
+    const sub=diasTarde===0?'Es día 3 del mes. ¿Has realizado tu aportación periódica de '+APORTACION_EUR+' €?':'El día 3 de este mes no abriste la app. ¿Has realizado ya tu aportación periódica de '+APORTACION_EUR+' €?';
+    document.getElementById('modal-sub').textContent=sub;
+    document.getElementById('modal-aportacion').classList.remove('hidden');
+  }
+}
 function confirmarAportacionPaso1(){ const costeActual=parseFloat(document.getElementById('coste-total').value)||0; document.getElementById('coste-total').value=costeActual+APORTACION_EUR; guardarPosicion(); calcular(); document.getElementById('modal-aportacion').classList.add('hidden'); document.getElementById('ap-partic').value=''; document.getElementById('ap-nav').value=''; document.getElementById('modal-aportacion2').classList.remove('hidden'); }
 function confirmarAportacionPaso2(){ const hoy=new Date(); const mesAnyo=hoy.getFullYear()+'-'+(hoy.getMonth()+1); const partic=document.getElementById('ap-partic').value; const nav=document.getElementById('ap-nav').value; if(partic&&parseFloat(partic)>0) document.getElementById('partic').value=partic; if(nav&&parseFloat(nav)>0) document.getElementById('nav-base').value=nav; guardarPosicion(); calcular(); localStorage.setItem('ultimaAportacion',mesAnyo); localStorage.removeItem('aportacionPospuesta'); document.getElementById('modal-aportacion2').classList.add('hidden'); toast('✦ Aportación registrada correctamente'); }
 function aplazarPaso2(){ const hoy=new Date(); const mesAnyo=hoy.getFullYear()+'-'+(hoy.getMonth()+1); localStorage.setItem('ultimaAportacion',mesAnyo); localStorage.setItem('aportacionDatosPendientes','true'); document.getElementById('modal-aportacion2').classList.add('hidden'); toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme'); }
@@ -900,13 +937,31 @@ function posponerAportacion(){ const hoy=new Date(); const mesAnyo=hoy.getFullYe
 let dbMainChart=null, dbDonutChart=null, dbBarChart=null, dbProjChart=null;
 let dbCurrentTab='evol';
 
+// Coste actual real (gobernado por la calculadora vía localStorage). Si la calculadora
+// ha registrado aportaciones posteriores al último DB_SNAPS_FIJOS, este coste será mayor
+// que el hardcodeado en los snapshots y debe usarse para las métricas actuales.
+function dbCosteActual(){
+  const ls=parseFloat(localStorage.getItem('costeTotal'));
+  return (!isNaN(ls)&&ls>0)?ls:61800;
+}
+
 function dbAllData(){
-  // Combina fijos + historial de la calculadora + extras del dashboard
-  const histCalc=cargarHistorial().map(h=>({fecha:h.fecha,val:h.val,partic:919.12,nav:Math.round((h.val/919.12)*10000)/10000,coste:61800,tipo:'cierre',label:'Cierre'}));
+  // Combina fijos + historial de la calculadora + extras del dashboard.
+  // El histórico de la calculadora hereda el coste actual real, no el antiguo hardcodeado.
+  const costeAct=dbCosteActual();
+  const partAct=parseFloat(localStorage.getItem('partic'))||919.12;
+  const histCalc=cargarHistorial().map(h=>({fecha:h.fecha,val:h.val,partic:partAct,nav:Math.round((h.val/partAct)*10000)/10000,coste:costeAct,tipo:'cierre',label:'Cierre'}));
   const extra=JSON.parse(localStorage.getItem('db_extra_v4')||'[]');
   const todos=[...DB_SNAPS_FIJOS,...histCalc,...extra];
   const seen=new Set();
-  return todos.filter(d=>{if(seen.has(d.fecha))return false;seen.add(d.fecha);return true;}).sort((a,b)=>a.fecha>b.fecha?1:-1);
+  const merged=todos.filter(d=>{if(seen.has(d.fecha))return false;seen.add(d.fecha);return true;}).sort((a,b)=>a.fecha>b.fecha?1:-1);
+  // Asegurar que el último registro refleja el coste actual: si hubo aportaciones posteriores
+  // al último snapshot fijo, el coste actual será mayor y debe sustituir al antiguo en el último punto.
+  if(merged.length>0){
+    const last=merged[merged.length-1];
+    if((last.coste||0)<costeAct) last.coste=costeAct;
+  }
+  return merged;
 }
 
 function dbFmt(n,d=2){return n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});}
@@ -922,7 +977,7 @@ function dbAddSnap(){
   const nav=parseFloat(document.getElementById('db-in-nav').value);
   const partic=parseFloat(document.getElementById('db-in-partic').value);
   const valManual=parseFloat(document.getElementById('db-in-val').value);
-  const coste=parseFloat(document.getElementById('db-in-coste').value)||61800;
+  const coste=parseFloat(document.getElementById('db-in-coste').value)||dbCosteActual();
   if(!fecha||isNaN(nav)||nav<=0||isNaN(partic)||partic<=0){toast('Introduce fecha, NAV y participaciones');return;}
   if(DB_SNAPS_FIJOS.find(s=>s.fecha===fecha)){toast('Esa fecha ya tiene datos fijos');return;}
   const val=(!isNaN(valManual)&&valManual>0)?valManual:Math.round(nav*partic*100)/100;
@@ -952,7 +1007,8 @@ function dbRenderMetrics(){
   const data=dbAllData();
   if(data.length===0) return;
   const last=data[data.length-1], prev=data.length>1?data[data.length-2]:null, first=data[0];
-  const coste=last.coste||61800;
+  // Coste actual = el de localStorage (gobernado por la calculadora), no el hardcodeado del snapshot.
+  const coste=dbCosteActual();
   const plusE=last.val-coste, plusP=coste>0?(plusE/coste)*100:0;
   const vsInicioE=last.val-first.val, vsInicioP=(vsInicioE/first.val)*100;
   const varE=prev?last.val-prev.val:0, varP=prev&&prev.val>0?(varE/prev.val)*100:0;
@@ -970,7 +1026,7 @@ function dbRenderMainChart(){
   const data=dbAllData(); if(!data.length) return;
   if(dbMainChart) dbMainChart.destroy();
   const labels=data.map(d=>dbFmtF(d.fecha));
-  const costeArr=data.map(d=>d.coste||61800);
+  const costeArr=data.map(d=>d.coste||dbCosteActual());
   const pointColors=data.map(d=>d.tipo==='suscripcion'?'#f0b429':'#7c6af7');
   const pointSizes=data.map(d=>d.tipo==='suscripcion'?6:3);
   let datasets=[], legItems=[];
@@ -995,7 +1051,7 @@ function dbRenderMainChart(){
 
 function dbRenderDonut(){
   const data=dbAllData(); if(!data.length) return;
-  const last=data[data.length-1]; const coste=last.coste||61800; const plus=Math.max(0,last.val-coste);
+  const last=data[data.length-1]; const coste=dbCosteActual(); const plus=Math.max(0,last.val-coste);
   if(dbDonutChart) dbDonutChart.destroy();
   dbDonutChart=new Chart(document.getElementById('db-donut'),{type:'doughnut',data:{labels:['Invertido','Plusvalía'],datasets:[{data:[Math.round(coste),Math.round(plus)],backgroundColor:['rgba(124,106,247,0.7)','rgba(0,229,160,0.7)'],borderColor:['#7c6af7','#00e5a0'],borderWidth:1.5,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+dbFmt(c.raw,0)+' €'}}}}});
   document.getElementById('db-donut-leg').innerHTML=`<div class="db-leg-item"><div class="db-leg-dot" style="background:#7c6af7"></div>Invertido: ${dbFmt(coste,0)} €</div><div class="db-leg-item"><div class="db-leg-dot" style="background:#00e5a0"></div>Plusvalía: +${dbFmt(plus,2)} €</div>`;
@@ -1017,7 +1073,7 @@ function dbRenderHist(){
   document.getElementById('db-hist-tbody').innerHTML=data.slice().reverse().map((d,i,arr)=>{
     const prev=arr[i+1];
     const varE=prev?d.val-prev.val:null, varP=prev&&prev.val>0?((d.val-prev.val)/prev.val)*100:null;
-    const coste=d.coste||61800, plusE=d.val-coste;
+    const coste=d.coste||dbCosteActual(), plusE=d.val-coste;
     const badge=d.tipo==='suscripcion'?`<span class="db-badge sus">Aportación</span>`:`<span class="db-badge cier">Cierre</span>`;
     const varCell=varE===null?'—':`<span class="${dbCls(varE)}">${dbSign(varE)}${dbFmt(varE,2)} €</span>`;
     const canDel=extra.find(s=>s.fecha===d.fecha);
