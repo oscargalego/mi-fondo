@@ -950,7 +950,28 @@ function dbAllData(){
   // El histórico de la calculadora hereda el coste actual real, no el antiguo hardcodeado.
   const costeAct=dbCosteActual();
   const partAct=parseFloat(localStorage.getItem('partic'))||919.12;
-  const histCalc=cargarHistorial().map(h=>({fecha:h.fecha,val:h.val,partic:partAct,nav:Math.round((h.val/partAct)*10000)/10000,coste:costeAct,tipo:'cierre',label:'Cierre'}));
+
+  // Para calcular el NAV correcto de cada fecha del historial de la calculadora,
+  // necesitamos saber cuántas participaciones había en esa fecha. Las suscripciones
+  // en DB_SNAPS_FIJOS marcan el momento en que cambia el número de participaciones.
+  // Construyo un mapa fecha → participaciones vigentes en esa fecha.
+  function particEnFecha(fecha){
+    let particVigente=partAct;
+    if(typeof DB_SNAPS_FIJOS!=='undefined'){
+      // Encontrar la última suscripción cuya fecha sea <= fecha
+      const susAnteriores=DB_SNAPS_FIJOS.filter(s=>s.tipo==='suscripcion'&&s.fecha<=fecha);
+      if(susAnteriores.length>0){
+        // La participación vigente desde una suscripción es la de esa propia suscripción
+        particVigente=susAnteriores[susAnteriores.length-1].partic;
+      }
+    }
+    return particVigente;
+  }
+
+  const histCalc=cargarHistorial().map(h=>{
+    const p=particEnFecha(h.fecha);
+    return {fecha:h.fecha,val:h.val,partic:p,nav:Math.round((h.val/p)*10000)/10000,coste:costeAct,tipo:'cierre',label:'Cierre'};
+  });
   const extra=JSON.parse(localStorage.getItem('db_extra_v4')||'[]');
   const todos=[...DB_SNAPS_FIJOS,...histCalc,...extra];
   const seen=new Set();
@@ -1011,13 +1032,22 @@ function dbRenderMetrics(){
   const coste=dbCosteActual();
   const plusE=last.val-coste, plusP=coste>0?(plusE/coste)*100:0;
   const vsInicioE=last.val-first.val, vsInicioP=(vsInicioE/first.val)*100;
-  const varE=prev?last.val-prev.val:0, varP=prev&&prev.val>0?(varE/prev.val)*100:0;
+  // Última sesión: medimos solo el movimiento del mercado (variación del NAV),
+  // no el efecto de aportaciones. Si entre prev y last cambian las participaciones,
+  // usar la diferencia de valoración hincharía/falsearía la cifra.
+  let varE=0, varP=0;
+  if(prev && prev.nav && last.nav && prev.nav>0){
+    varP=((last.nav-prev.nav)/prev.nav)*100;
+    // En €: aplicamos la variación del NAV sobre las participaciones actuales
+    // (lo que el mercado ha hecho ganar/perder a tu cartera de hoy)
+    varE=(last.nav-prev.nav)*last.partic;
+  }
   const meses=Math.round((new Date(last.fecha)-new Date(first.fecha))/(1000*60*60*24*30));
   document.getElementById('db-sub-hdr').textContent='Desde sep 2025 · último: '+dbFmtF(last.fecha)+' · '+data.length+' registros';
   document.getElementById('db-metrics').innerHTML=`
     <div class="db-mc"><div class="db-mc-l">Valoración actual</div><div class="db-mc-v">${dbFmt(last.val,0)} €</div><div class="db-mc-s">NAV ${dbFmt(last.nav,4)} € · ${dbFmt(last.partic,2)} parts.</div></div>
     <div class="db-mc"><div class="db-mc-l">Plusvalía total</div><div class="db-mc-v ${dbCls(plusE)}">${dbSign(plusE)}${dbFmt(plusE,2)} €</div><div class="db-mc-s ${dbCls(plusE)}">${dbSign(plusP)}${dbFmt(plusP,2)}% sobre ${dbFmt(coste,0)} €</div></div>
-    <div class="db-mc"><div class="db-mc-l">Vs inicio sep 2025</div><div class="db-mc-v ${dbCls(vsInicioE)}">${dbSign(vsInicioE)}${dbFmt(vsInicioE,2)} €</div><div class="db-mc-s ${dbCls(vsInicioP)}">${dbSign(vsInicioP)}${dbFmt(vsInicioP,2)}% en ${meses} meses</div></div>
+    <div class="db-mc"><div class="db-mc-l">Revalorización del fondo</div><div class="db-mc-v ${dbCls(vsInicioE)}">${dbSign(vsInicioE)}${dbFmt(vsInicioE,2)} €</div><div class="db-mc-s ${dbCls(vsInicioP)}">${dbSign(vsInicioP)}${dbFmt(vsInicioP,2)}% desde inicio (${meses} meses)</div></div>
     <div class="db-mc"><div class="db-mc-l">Última sesión</div><div class="db-mc-v ${dbCls(varE)}">${prev?dbSign(varE)+dbFmt(varE,2)+' €':'—'}</div><div class="db-mc-s ${dbCls(varP)}">${prev?dbSign(varP)+dbFmt(varP,2)+'% vs '+dbFmtF(prev.fecha):'—'}</div></div>
   `;
 }
