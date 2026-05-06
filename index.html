@@ -1047,7 +1047,7 @@ function dbRenderMetrics(){
   document.getElementById('db-metrics').innerHTML=`
     <div class="db-mc"><div class="db-mc-l">Valoración actual</div><div class="db-mc-v">${dbFmt(last.val,0)} €</div><div class="db-mc-s">NAV ${dbFmt(last.nav,4)} € · ${dbFmt(last.partic,2)} parts.</div></div>
     <div class="db-mc"><div class="db-mc-l">Plusvalía total</div><div class="db-mc-v ${dbCls(plusE)}">${dbSign(plusE)}${dbFmt(plusE,2)} €</div><div class="db-mc-s ${dbCls(plusE)}">${dbSign(plusP)}${dbFmt(plusP,2)}% sobre ${dbFmt(coste,0)} €</div></div>
-    <div class="db-mc"><div class="db-mc-l">Revalorización del fondo</div><div class="db-mc-v ${dbCls(vsInicioE)}">${dbSign(vsInicioE)}${dbFmt(vsInicioE,2)} €</div><div class="db-mc-s ${dbCls(vsInicioP)}">${dbSign(vsInicioP)}${dbFmt(vsInicioP,2)}% desde inicio (${meses} meses)</div></div>
+    <div class="db-mc"><div class="db-mc-l">Revalorización del fondo</div><div class="db-mc-v ${dbCls(vsInicioP)}">${dbSign(vsInicioP)}${dbFmt(vsInicioP,2)}%</div><div class="db-mc-s">desde inicio · ${meses} meses</div></div>
     <div class="db-mc"><div class="db-mc-l">Última sesión</div><div class="db-mc-v ${dbCls(varE)}">${prev?dbSign(varE)+dbFmt(varE,2)+' €':'—'}</div><div class="db-mc-s ${dbCls(varP)}">${prev?dbSign(varP)+dbFmt(varP,2)+'% vs '+dbFmtF(prev.fecha):'—'}</div></div>
   `;
 }
