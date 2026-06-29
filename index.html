@@ -1607,6 +1607,28 @@ calcularTotal();
 setAsset(assetView);
 // El BTC cotiza 24/7 → refrescar precio en segundo plano si no hay caché fresca
 if(!btcCacheOk){ fetchBtcPrecio(); }
+
+// ── AUTO-REFRESCO DEL PRECIO BTC (en vivo, solo con la app visible) ──
+let btcRefrescoTimer = null;
+function iniciarRefrescoBtc(){
+  if(btcRefrescoTimer) return;
+  btcRefrescoTimer = setInterval(()=>{
+    if(document.visibilityState === 'visible'){ fetchBtcPrecio(); }
+  }, 60000); // cada 60 s
+}
+function pararRefrescoBtc(){
+  if(btcRefrescoTimer){ clearInterval(btcRefrescoTimer); btcRefrescoTimer = null; }
+}
+// Arrancar el refresco y reaccionar al volver a la app
+iniciarRefrescoBtc();
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    fetchBtcPrecio();        // refresco inmediato al volver a abrir
+    iniciarRefrescoBtc();
+  } else {
+    pararRefrescoBtc();      // pausa en segundo plano (ahorra batería/datos)
+  }
+});
 renderHistorial();
 renderGrafica();
 actualizarEstadoBoton();
