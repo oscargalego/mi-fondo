@@ -998,37 +998,25 @@ async function fetchMercado(){
   actualizarEstadoBoton();
 }
 
-// ── FETCH PRECIO BITCOIN (Alpha Vantage cripto) ──
+// ── FETCH PRECIO BITCOIN (CoinGecko · gratuito, sin clave) ──
 async function fetchBtcPrecio(){
   try{
-    // Precio actual BTC/EUR
-    const r = await fetch(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=BTC&to_currency=EUR&apikey=${API_KEY}`);
+    // Precio BTC/EUR + variación 24h en una sola llamada
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&include_24hr_change=true');
+    if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
-    const rate = d['Realtime Currency Exchange Rate'];
-    if(!rate || !rate['5. Exchange Rate']) throw new Error('Sin precio BTC');
-    const precio = parseFloat(rate['5. Exchange Rate']);
-    if(isNaN(precio) || precio<=0) throw new Error('Precio BTC inválido');
-
-    // Variación diaria: comparar con el cierre anterior (serie diaria, market EUR)
-    let pct = 0;
-    try{
-      const r2 = await fetch(`https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=BTC&market=EUR&apikey=${API_KEY}`);
-      const d2 = await r2.json();
-      const serie = d2['Time Series (Digital Currency Daily)'];
-      if(serie){
-        const dias = Object.keys(serie).sort();
-        if(dias.length>=2){
-          const cierreAyer = parseFloat(serie[dias[dias.length-2]]['4. close'] || serie[dias[dias.length-2]]['4a. close (EUR)']);
-          if(cierreAyer>0) pct = ((precio - cierreAyer)/cierreAyer)*100;
-        }
-      }
-    }catch(e){ /* la variación es secundaria */ }
+    const precio = d?.bitcoin?.eur;
+    if(typeof precio!=='number' || precio<=0) throw new Error('Sin precio BTC');
+    let pct = d?.bitcoin?.eur_24h_change;
+    if(typeof pct!=='number' || isNaN(pct)) pct = 0;
 
     btcState = {precio, precioPrev:btcState.precio, pct, fecha:new Date().toISOString()};
     localStorage.setItem('btcData', JSON.stringify({precio, pct, ts:Date.now()}));
     calcularBtc(); calcularTotal();
+    return true;
   }catch(err){
     console.error('BTC:', err);
+    return false;
     // No bloquea nada: el fondo ya se actualizó
   }
 }
@@ -1038,7 +1026,7 @@ function cargarBtcCache(){
   if(!raw) return false;
   try{
     const d=JSON.parse(raw);
-    if((Date.now()-d.ts)/3600000>28) return false;
+    if((Date.now()-d.ts)/3600000>1) return false; // BTC 24/7: caché válida 1h
     btcState={precio:d.precio, precioPrev:null, pct:d.pct, fecha:null};
     return true;
   }catch(e){return false;}
@@ -1611,12 +1599,14 @@ cargarPosicion();
 cargarBtcPosicion();
 initSliders();
 const cargado=cargarDatosCache();
-cargarBtcCache();
+const btcCacheOk=cargarBtcCache();
 if(!cargado){ setStatus('','Pulsa Actualizar para cargar datos'); }
 calcular();
 calcularBtc();
 calcularTotal();
 setAsset(assetView);
+// El BTC cotiza 24/7 → refrescar precio en segundo plano si no hay caché fresca
+if(!btcCacheOk){ fetchBtcPrecio(); }
 renderHistorial();
 renderGrafica();
 actualizarEstadoBoton();
