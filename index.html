@@ -190,6 +190,26 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
 .tax-row.net .tax-v{font-size:15px;color:var(--green);font-weight:500;}
 .tax-note{font-size:10px;color:var(--text3);line-height:1.6;margin-top:10px;}
 
+/* SIMULADOR VENTA BTC */
+.sim-box{background:var(--bg3);border:1px solid rgba(240,180,41,0.25);border-radius:12px;padding:14px 16px;margin-top:12px;}
+.sim-title{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+.sim-modo{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
+.sim-modo button{padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+.sim-modo button.on{background:rgba(240,180,41,0.14);border-color:rgba(240,180,41,0.35);color:var(--gold);}
+.sim-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-4px 0 12px;}
+.sim-quick button{padding:7px 0;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;}
+.sim-box .field-group{margin-bottom:10px;}
+.sim-box .field-input-wrap{background:var(--bg2);}
+.sim-warn{font-size:11px;color:var(--red);margin:4px 0 6px;min-height:0;}
+.sim-lotes{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:10.5px;margin-top:6px;}
+.sim-lotes th{color:var(--text3);font-weight:400;text-align:right;padding:4px 2px;border-bottom:1px solid var(--border);}
+.sim-lotes th:first-child,.sim-lotes td:first-child{text-align:left;}
+.sim-lotes td{color:var(--text2);text-align:right;padding:5px 2px;border-bottom:1px solid var(--border);}
+.sim-lotes tr.used td{color:var(--text);}
+.sim-lotes td.g-pos{color:var(--green);}.sim-lotes td.g-neg{color:var(--red);}
+.sim-det{margin-top:10px;}
+.sim-det summary{font-size:11px;color:var(--text2);cursor:pointer;}
+
 /* PROYECCIÓN */
 .proj-section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
 .proj-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px;}
@@ -307,6 +327,43 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
       <div class="tax-row"><span class="tax-k">Tipo efectivo</span><span class="tax-v" id="tax-tipo">—</span></div>
       <div class="tax-row net"><span class="tax-k">Efectivo neto tras impuestos</span><span class="tax-v" id="tax-neto">—</span></div>
       <p class="tax-note">Estimación orientativa con criterio FIFO sobre lotes registrados y tramos del ahorro IRPF (19/21/23/27/30%). No es asesoramiento fiscal. Vender es un hecho imponible; el traspaso a tu Ledger no lo es.</p>
+    </div>
+
+    <div class="sim-box">
+      <div class="sim-title">Simular venta parcial (FIFO)</div>
+      <div class="sim-modo">
+        <button id="sim-modo-eur" class="on" onclick="simSetModo('EUR')">Quiero obtener €</button>
+        <button id="sim-modo-btc" onclick="simSetModo('BTC')">Quiero vender BTC</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="sim-cant-label">Importe bruto a obtener (€)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-cant" step="any" min="0" inputmode="decimal" placeholder="ej: 10000" oninput="simCalcular()"><span class="field-unit" id="sim-cant-unit">€</span></div>
+      </div>
+      <div class="sim-quick">
+        <button onclick="simPct(10)">10%</button><button onclick="simPct(25)">25%</button><button onclick="simPct(50)">50%</button><button onclick="simPct(100)">Todo</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Precio de venta (€/BTC) · vacío = precio actual</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-precio" step="any" min="0" inputmode="decimal" oninput="simCalcular()"><span class="field-unit">€</span></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Otras ganancias del ahorro este año (€)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-otras" step="any" inputmode="decimal" placeholder="0" oninput="simCalcular()"><span class="field-unit">€</span></div>
+      </div>
+      <div class="sim-warn" id="sim-warn"></div>
+      <div class="tax-row"><span class="tax-k">BTC que vendes</span><span class="tax-v" id="sim-btc">—</span></div>
+      <div class="tax-row"><span class="tax-k">Ingreso bruto</span><span class="tax-v" id="sim-ingreso">—</span></div>
+      <div class="tax-row"><span class="tax-k">Coste de adquisición FIFO</span><span class="tax-v" id="sim-coste">—</span></div>
+      <div class="tax-row"><span class="tax-k">Ganancia / pérdida patrimonial</span><span class="tax-v" id="sim-ganancia">—</span></div>
+      <div class="tax-row"><span class="tax-k">Impuesto de esta venta</span><span class="tax-v" id="sim-imp">—</span></div>
+      <div class="tax-row"><span class="tax-k">Tipo efectivo</span><span class="tax-v" id="sim-tipo">—</span></div>
+      <div class="tax-row net"><span class="tax-k">Efectivo neto</span><span class="tax-v" id="sim-neto">—</span></div>
+      <div class="tax-row"><span class="tax-k">Te quedarían</span><span class="tax-v" id="sim-resto">—</span></div>
+      <details class="sim-det">
+        <summary>Ver qué lotes se venden</summary>
+        <table class="sim-lotes"><thead><tr><th>Compra</th><th>€/BTC</th><th>BTC vendido</th><th>Ganancia</th></tr></thead><tbody id="sim-lotes-body"></tbody></table>
+      </details>
+      <p class="tax-note">FIFO: Hacienda considera que vendes primero los BTC más antiguos (nov-dic 2025, comprados más caros), aunque estén en tu Ledger. El impuesto es el incremento marginal en tu base del ahorro, contando las otras ganancias que indiques. Las pérdidas no pagan impuesto y pueden compensarse con otras ganancias del ahorro (detalle no simulado). Lotes según tu historial de Binance. No es asesoramiento fiscal.</p>
     </div>
   </div>
 
@@ -679,6 +736,89 @@ function impuestoAhorro(g){
   return imp;
 }
 
+// ── LOTES DE COMPRA BTC (orden FIFO, historial Binance) ──
+const BTC_LOTES = [
+  {fecha:'2025-11-24', btc:0.00905364, eur:700.00},
+  {fecha:'2025-11-27', btc:0.01762947, eur:1400.00},
+  {fecha:'2025-11-28', btc:0.05014000, eur:3989.89},
+  {fecha:'2025-12-01', btc:0.05235000, eur:3899.77},
+  {fecha:'2025-12-04', btc:0.00133000, eur:105.02},
+  {fecha:'2026-02-05', btc:0.18479000, eur:9999.91}
+];
+let simModo = 'EUR';
+
+function simSetModo(m){
+  simModo=m;
+  document.getElementById('sim-modo-eur').classList.toggle('on',m==='EUR');
+  document.getElementById('sim-modo-btc').classList.toggle('on',m==='BTC');
+  document.getElementById('sim-cant-label').textContent = m==='EUR' ? 'Importe bruto a obtener (€)' : 'BTC a vender';
+  document.getElementById('sim-cant-unit').textContent = m==='EUR' ? '€' : 'BTC';
+  document.getElementById('sim-cant').value='';
+  document.getElementById('sim-cant').placeholder = m==='EUR' ? 'ej: 10000' : 'ej: 0.05';
+  simCalcular();
+}
+function simPrecio(){
+  const p=parseFloat(document.getElementById('sim-precio').value);
+  return p>0 ? p : (btcState.precio||0);
+}
+function simPct(pct){
+  const total=BTC_LOTES.reduce((a,l)=>a+l.btc,0);
+  const btc=total*pct/100;
+  const precio=simPrecio();
+  if(simModo==='EUR'){
+    if(!(precio>0)){ toast('Sin precio: pulsa Actualizar o escribe un precio'); return; }
+    document.getElementById('sim-cant').value=(Math.floor(btc*precio*100)/100).toFixed(2);
+  } else document.getElementById('sim-cant').value=btc.toFixed(8);
+  simCalcular();
+}
+// Consume lotes del más antiguo al más nuevo
+function fifoVenta(btcVender){
+  let resto=btcVender, coste=0; const det=[];
+  for(const l of BTC_LOTES){
+    const usado=Math.max(0,Math.min(l.btc,resto));
+    const pu=l.eur/l.btc;
+    det.push({...l, pu, usado, costeUsado:usado*pu});
+    coste+=usado*pu; resto-=usado;
+  }
+  return {coste, det, faltan:Math.max(0,resto)};
+}
+function simCalcular(){
+  const ids=['sim-btc','sim-ingreso','sim-coste','sim-ganancia','sim-imp','sim-tipo','sim-neto','sim-resto'];
+  const warn=document.getElementById('sim-warn');
+  const body=document.getElementById('sim-lotes-body');
+  const precio=simPrecio();
+  const cant=parseFloat(document.getElementById('sim-cant').value)||0;
+  const otras=parseFloat(document.getElementById('sim-otras').value)||0;
+  const totalBtc=BTC_LOTES.reduce((a,l)=>a+l.btc,0);
+  warn.textContent='';
+  const vacio=()=>{ ids.forEach(i=>document.getElementById(i).textContent='—'); body.innerHTML=''; };
+  if(!(precio>0)){ vacio(); if(cant>0) warn.textContent='Pulsa Actualizar datos o escribe un precio de venta'; return; }
+  if(!(cant>0)){ vacio(); return; }
+  let btc = simModo==='EUR' ? cant/precio : cant;
+  if(btc>totalBtc+1e-9){ warn.textContent='⚠ Superas tu saldo ('+fmtNum(totalBtc,8)+' BTC). Se simula la venta total.'; btc=totalBtc; }
+  const ingreso=btc*precio;
+  const f=fifoVenta(btc);
+  const gan=ingreso-f.coste;
+  // Impuesto marginal: base con la venta − base sin ella
+  const imp=Math.max(0, impuestoAhorro(otras+gan)-impuestoAhorro(Math.max(0,otras)));
+  const tipo=gan>0?(imp/gan)*100:0;
+  const set=(i,t,c)=>{const e=document.getElementById(i);e.textContent=t;e.style.color=c||'';};
+  set('sim-btc',fmtNum(btc,8)+' BTC');
+  set('sim-ingreso',fmtEur(ingreso));
+  set('sim-coste',fmtEur(f.coste));
+  set('sim-ganancia',(gan>=0?'+':'')+fmtEur(gan), gan>=0?'var(--green)':'var(--red)');
+  set('sim-imp', imp>0?'−'+fmtEur(imp):fmtEur(0), imp>0?'var(--red)':'');
+  set('sim-tipo', gan>0?fmtNum(tipo,1)+'%':'— (pérdida, 0 €)');
+  set('sim-neto',fmtEur(ingreso-imp));
+  const restoBtc=totalBtc-btc, restoCoste=BTC_LOTES.reduce((a,l)=>a+l.eur,0)-f.coste;
+  set('sim-resto', fmtNum(restoBtc,8)+' BTC · coste '+fmtEur(Math.max(0,restoCoste)));
+  body.innerHTML=f.det.map(l=>{
+    const g=l.usado*precio-l.costeUsado;
+    const usado=l.usado>1e-12;
+    return '<tr class="'+(usado?'used':'')+'"><td>'+fmtFecha(l.fecha)+' '+l.fecha.slice(2,4)+'</td><td>'+fmtNum(l.pu,0)+'</td><td>'+(usado?fmtNum(l.usado,8):'—')+'</td><td class="'+(usado?(g>=0?'g-pos':'g-neg'):'')+'">'+(usado?(g>=0?'+':'')+fmtNum(g,2):'—')+'</td></tr>';
+  }).join('');
+}
+
 // ── CÁLCULO BITCOIN ──
 function calcularBtc(){
   const cant=parseFloat(document.getElementById('btc-cantidad').value)||0;
@@ -732,6 +872,7 @@ function calcularBtc(){
   } else {
     ['tax-ganancia','tax-impuesto','tax-tipo','tax-neto'].forEach(id=>document.getElementById(id).textContent='—');
   }
+  simCalcular();
 }
 
 // ── CÁLCULO PATRIMONIO TOTAL ──
