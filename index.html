@@ -1,0 +1,2756 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0E1B1F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Fondo">
+<title>Mi Fondo · Vanguard S&P 500</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root {
+  --bg:#0E1B1F;--bg2:#14272C;--bg3:#1A3137;--bg4:#24403F;
+  --border:rgba(141,163,161,0.14);--border2:rgba(141,163,161,0.24);
+  --text:#ECE6D8;--text2:#B9C3BE;--text3:#8DA3A1;
+  --sans:'Hanken Grotesk',system-ui,sans-serif;--num:'Manrope',system-ui,sans-serif;--btc:#6C82E8;
+  --green:#6FCF97;--green-bg:rgba(111,207,151,0.08);--green-border:rgba(111,207,151,0.2);
+  --red:#EB7A7A;--red-bg:rgba(235,122,122,0.08);--red-border:rgba(235,122,122,0.2);
+  --accent:#B38D35;--accent2:rgba(179,141,53,0.15);--gold:#D7B666;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100dvh;overflow-x:hidden;}
+body{padding-top:calc(var(--safe-top));padding-bottom:calc(var(--safe-bottom) + 80px);}
+.noise{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:0.4;}
+.glow{position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:600px;height:400px;pointer-events:none;z-index:0;background:radial-gradient(ellipse,rgba(179,141,53,0.12) 0%,transparent 70%);}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 16px;}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;}
+.logo-name{font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:none;color:var(--text2);}
+.logo-fund{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.02em;}
+.logo-fund span{color:var(--accent);}
+.last-update{font-family:var(--num);font-size:10px;color:var(--text3);text-align:right;line-height:1.6;}
+.status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--text3);margin-right:4px;vertical-align:middle;}
+.status-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+.status-dot.loading{background:var(--gold);box-shadow:0 0 6px var(--gold);animation:pulse 0.6s infinite;}
+.status-dot.error{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.main-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:12px;position:relative;overflow:hidden;}
+.main-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.4;}
+.val-label{font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:none;color:var(--text2);margin-bottom:8px;}
+.val-main{font-family:var(--num);font-size:40px;font-weight:500;letter-spacing:-0.02em;color:var(--text);line-height:1;margin-bottom:10px;}
+.val-main.up{color:var(--green);}.val-main.down{color:var(--red);}
+.val-change{display:inline-flex;align-items:center;gap:6px;font-family:var(--num);font-size:13px;font-weight:500;padding:5px 12px;border-radius:20px;}
+.val-change.up{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+.val-change.down{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+.val-change.neutral{background:var(--bg3);border:1px solid var(--border);color:var(--text2);}
+.val-change::before{content:'▲';font-size:8px;}.val-change.down::before{content:'▼';}.val-change.neutral::before{content:'—';}
+.nav-est-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+.nav-est-label{font-size:11px;color:var(--text2);}.nav-est-val{font-family:var(--num);font-size:15px;color:var(--text);}
+
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+.stat-label{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:none;color:var(--text3);margin-bottom:6px;}
+.stat-val{font-family:var(--num);font-size:16px;font-weight:500;color:var(--text);}
+.stat-chg{font-family:var(--num);font-size:11px;margin-top:3px;}
+.stat-chg.up{color:var(--green);}.stat-chg.down{color:var(--red);}.stat-chg.neutral{color:var(--text3);}
+
+.plus-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.plus-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden;}
+.plus-card.total{grid-column:1 / -1;}
+.plus-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.plus-card.total::after{background:linear-gradient(90deg,var(--gold),transparent);}
+.plus-card.hoy-pos::after{background:linear-gradient(90deg,var(--green),transparent);}
+.plus-card.hoy-neg::after{background:linear-gradient(90deg,var(--red),transparent);}
+.plus-card.vs::after{background:linear-gradient(90deg,var(--accent),transparent);}
+.plus-label{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:none;color:var(--text3);margin-bottom:8px;}
+.plus-eur{font-family:var(--num);font-size:20px;font-weight:500;}
+.plus-card.total .plus-eur{font-size:24px;}
+.plus-pct{font-family:var(--num);font-size:12px;margin-top:3px;}
+.c-gold{color:var(--gold);}.c-green{color:var(--green);}.c-red{color:var(--red);}.c-muted{color:var(--text2);}
+
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.btn{width:100%;padding:14px 10px;border-radius:14px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:7px;transition:transform 0.1s,background 0.2s;border:1px solid;}
+.btn:active{transform:scale(0.97);}
+.btn-actualizar{background:var(--accent2);border-color:rgba(179,141,53,0.3);}
+.btn-actualizar:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-guardar{background:rgba(111,207,151,0.08);border-color:rgba(111,207,151,0.25);color:var(--green);}
+.spin{display:inline-block;animation:rotar 0.8s linear infinite;}
+@keyframes rotar{to{transform:rotate(360deg)}}
+
+.section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer;user-select:none;}
+.section-title{font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:none;color:var(--text2);}
+.section-arrow{color:var(--text3);font-size:12px;transition:transform 0.2s;}
+.section-arrow.open{transform:rotate(180deg);}
+.section-body.collapsed{display:none;}
+.field-group{margin-bottom:14px;}
+.field-label{font-size:11px;color:var(--text2);letter-spacing:0.06em;margin-bottom:6px;display:block;}
+.field-input-wrap{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s;}
+.field-input-wrap:focus-within{border-color:var(--accent);}
+.field-input{flex:1;background:transparent;border:none;outline:none;font-family:var(--num);font-size:16px;font-weight:500;color:var(--text);padding:12px 14px;width:100%;}
+.field-unit{font-family:var(--num);font-size:12px;color:var(--text3);padding-right:14px;}
+.slider-group{margin-bottom:16px;}
+.slider-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.slider-label{font-size:11px;color:var(--text2);letter-spacing:0.06em;}
+.slider-value{font-family:var(--num);font-size:13px;font-weight:500;}
+.slider-value.up{color:var(--green);}.slider-value.down{color:var(--red);}.slider-value.neutral{color:var(--text3);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;outline:none;cursor:pointer;background:linear-gradient(to right,var(--accent) var(--pct,50%),var(--bg4) var(--pct,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-shadow:0 0 10px rgba(179,141,53,0.4);transition:transform 0.1s;}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);}
+
+.chart-section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
+.chart-empty{font-family:var(--num);font-size:12px;color:var(--text3);text-align:center;padding:40px 0;}
+#chart-canvas{width:100%;display:block;}
+.chart-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.chart-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);font-family:var(--num);}
+.chart-leg-dot{width:8px;height:8px;border-radius:50%;}
+
+.hist-list{list-style:none;}
+.hist-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.hist-item:last-child{border-bottom:none;}
+.hist-fecha{font-size:12px;color:var(--text2);font-family:var(--num);}
+.hist-val{font-family:var(--num);font-size:14px;font-weight:500;color:var(--text);}
+.hist-chg{font-family:var(--num);font-size:11px;}
+.hist-chg.up{color:var(--green);}.hist-chg.down{color:var(--red);}.hist-chg.neutral{color:var(--text3);}
+.hist-del{background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.hist-del:active{color:var(--red);}
+.hist-empty{font-size:12px;color:var(--text3);font-family:var(--num);text-align:center;padding:20px 0;list-style:none;}
+
+.note{font-size:11px;color:var(--text3);line-height:1.7;padding:0 4px;margin-bottom:24px;}
+.toast{position:fixed;bottom:calc(var(--safe-bottom) + 90px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--text);opacity:0;transition:opacity 0.3s,transform 0.3s;pointer-events:none;z-index:100;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* MODAL APORTACIÓN */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:100%;max-width:340px;}
+.modal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+.modal-amount{font-family:var(--num);font-size:32px;font-weight:500;color:var(--green);text-align:center;margin-bottom:6px;}
+.modal-label{font-size:11px;color:var(--text3);text-align:center;margin-bottom:20px;}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-btn{padding:14px;border-radius:12px;border:1px solid;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:transform 0.1s;}
+.modal-btn:active{transform:scale(0.97);}
+.modal-btn.si{background:rgba(111,207,151,0.1);border-color:rgba(111,207,151,0.3);color:var(--green);}
+.modal-btn.no{background:var(--bg3);border-color:var(--border);color:var(--text2);}
+
+/* BACKUP */
+.backup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.btn-backup{width:100%;padding:12px 10px;border-radius:12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform 0.1s;border:1px solid;}
+.btn-backup:active{transform:scale(0.97);}
+.btn-exp{background:rgba(215,182,102,0.08);border-color:rgba(215,182,102,0.25);color:var(--gold);}
+.btn-imp{background:rgba(179,141,53,0.08);border-color:rgba(179,141,53,0.25);color:var(--accent);}
+.backup-info{font-size:11px;color:var(--text3);line-height:1.6;margin-top:10px;}
+#imp-file{display:none;}
+
+/* RESET */
+.btn-reset{width:100%;padding:12px;border-radius:12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform 0.1s;border:1px solid;background:rgba(235,122,122,0.06);border-color:rgba(235,122,122,0.2);color:var(--red);margin-top:10px;}
+.btn-reset:active{transform:scale(0.97);}
+.modal-reset .modal-title{color:var(--red);}
+.confirm-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:var(--num);font-size:14px;color:var(--text);outline:none;margin:12px 0;transition:border-color 0.2s;}
+.confirm-input:focus{border-color:var(--red);}
+
+/* SELECTOR DE ACTIVOS (Fondo / BTC / Total) */
+.asset-switch{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:12px;}
+.asset-tab{padding:9px 6px;border-radius:10px;border:none;background:transparent;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0.04em;color:var(--text3);transition:background 0.18s,color 0.18s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.asset-tab:active{transform:scale(0.97);}
+.asset-tab.active{color:var(--text);}
+.asset-tab.active[data-asset="fondo"]{background:var(--accent2);color:#D7B666;}
+.asset-tab.active[data-asset="btc"]{background:rgba(215,182,102,0.14);color:var(--gold);}
+.asset-tab.active[data-asset="total"]{background:rgba(111,207,151,0.12);color:var(--green);}
+.asset-tab .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+.asset-tab[data-asset="fondo"] .dot{background:var(--accent);}
+.asset-tab[data-asset="btc"] .dot{background:var(--gold);}
+.asset-tab[data-asset="total"] .dot{background:var(--green);}
+.view-asset[hidden]{display:none;}
+.main-card.btc::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.main-card.total::before{background:linear-gradient(90deg,transparent,var(--green),transparent);}
+.btc-price-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+.btc-price-label{font-size:11px;color:var(--text2);}
+.btc-price-val{font-family:var(--num);font-size:15px;color:var(--text);}
+/* Reparto de activos */
+.alloc-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;margin:10px 0 8px;background:var(--bg4);}
+.alloc-seg{height:100%;}
+.alloc-seg.fondo{background:var(--accent);}
+.alloc-seg.btc{background:var(--gold);}
+.alloc-legend{display:flex;justify-content:space-between;font-family:var(--num);font-size:11px;}
+.alloc-legend .l-fondo{color:#D7B666;}
+.alloc-legend .l-btc{color:var(--gold);}
+/* Caja fiscal BTC */
+.tax-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;}
+.tax-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:12px;}
+.tax-row .tax-k{color:var(--text2);}
+.tax-row .tax-v{font-family:var(--num);color:var(--text);}
+.tax-row.net{border-top:1px solid var(--border);margin-top:6px;padding-top:10px;}
+.tax-row.net .tax-k{color:var(--text);font-weight:600;}
+.tax-row.net .tax-v{font-size:15px;color:var(--green);font-weight:500;}
+.tax-note{font-size:10px;color:var(--text3);line-height:1.6;margin-top:10px;}
+
+/* SIMULADOR VENTA BTC */
+.sim-box{background:var(--bg3);border:1px solid rgba(215,182,102,0.25);border-radius:12px;padding:14px 16px;margin-top:12px;}
+.sim-title{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:none;color:var(--gold);margin-bottom:12px;}
+.sim-modo{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
+.sim-modo button{padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;}
+.sim-modo button.on{background:rgba(215,182,102,0.14);border-color:rgba(215,182,102,0.35);color:var(--gold);}
+.sim-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-4px 0 12px;}
+.sim-quick button{padding:7px 0;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:var(--num);font-size:11px;cursor:pointer;}
+.sim-box .field-group{margin-bottom:10px;}
+.sim-box .field-input-wrap{background:var(--bg2);}
+.sim-warn{font-size:11px;color:var(--red);margin:4px 0 6px;min-height:0;}
+.sim-lotes{width:100%;border-collapse:collapse;font-family:var(--num);font-size:10.5px;margin-top:6px;}
+.sim-lotes th{color:var(--text3);font-weight:400;text-align:right;padding:4px 2px;border-bottom:1px solid var(--border);}
+.sim-lotes th:first-child,.sim-lotes td:first-child{text-align:left;}
+.sim-lotes td{color:var(--text2);text-align:right;padding:5px 2px;border-bottom:1px solid var(--border);}
+.sim-lotes tr.used td{color:var(--text);}
+.sim-lotes td.g-pos{color:var(--green);}.sim-lotes td.g-neg{color:var(--red);}
+.sim-det{margin-top:10px;}
+.sim-det summary{font-size:11px;color:var(--text2);cursor:pointer;}
+
+/* PROYECCIÓN */
+.proj-section{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:12px;}
+.proj-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+.proj-card{background:var(--bg3);border-radius:var(--border-radius-md,8px);padding:12px 14px;}
+.proj-card.full{grid-column:1/-1;}
+.proj-card-label{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:none;color:var(--text3);margin-bottom:6px;}
+.proj-card-val{font-family:var(--num);font-size:18px;font-weight:500;color:var(--text);}
+.proj-card-val.big{font-size:24px;color:var(--green);}
+.proj-card-sub{font-family:var(--num);font-size:11px;color:var(--text3);margin-top:3px;}
+.proj-canvas-wrap{position:relative;width:100%;height:220px;margin-bottom:12px;}
+.proj-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.proj-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);font-family:var(--num);}
+.proj-leg-dot{width:10px;height:3px;border-radius:2px;display:inline-block;}
+
+/* ═══════ TEMA PREMIUM ═══════ */
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased;padding-bottom:calc(var(--safe-bottom) + 92px);}
+.noise,.glow{display:none;}
+.val-main,.stat-val,.plus-eur,.plus-pct,.stat-chg,.val-change,.nav-est-val,.hist-val,.hist-chg,.hist-fecha,.field-input,.tax-v,.proj-card-val,.proj-card-sub,.btc-price-val,.slider-value,.modal-amount,.sim-lotes,.alloc-legend{font-variant-numeric:tabular-nums lining-nums;}
+.val-label,.stat-label,.plus-label,.section-title,.proj-card-label,.logo-name,.sim-title{letter-spacing:0;font-weight:500;}
+.val-label{font-size:14px;color:var(--text3);}
+.stat-label,.plus-label,.proj-card-label{font-size:12.5px;color:var(--text3);}
+.section-title{font-size:15px;color:var(--text);font-weight:600;}
+header{padding:16px 0 8px;}
+.logo-name{font-size:15px;color:var(--text2);}
+.logo-fund{display:none;}
+.last-update{font-family:var(--sans);font-size:13px;color:var(--text3);}
+.status-dot{width:7px;height:7px;}
+.main-card{background:transparent;border:0;padding:18px 0 14px;margin-bottom:6px;overflow:visible;}
+.main-card::before{display:none;}
+.val-main{font-family:var(--num);font-weight:300;font-size:clamp(42px,12.5vw,58px);letter-spacing:-0.02em;color:var(--text);margin-bottom:12px;}
+.val-main.up,.val-main.down{color:var(--text);}
+.val-change{font-family:var(--sans);font-size:14px;padding:6px 12px;}
+.stat-card,.plus-card,.section,.proj-section{border-radius:20px;}
+.stat-val{font-size:18px;font-weight:400;}
+.plus-eur{font-weight:400;}
+.plus-card::after{display:none;}
+.asset-switch{border-radius:999px;padding:4px;gap:0;background:var(--bg2);border:0;margin:6px 0 4px;}
+.asset-tab{border-radius:999px;padding:10px 0;font-size:14px;font-weight:500;letter-spacing:0;color:var(--text3);}
+.asset-tab.active[data-asset]{background:var(--bg3);color:var(--text);}
+.asset-tab[data-asset="fondo"] .dot{background:#B38D35;}
+.asset-tab[data-asset="btc"] .dot{background:var(--btc);}
+.asset-tab[data-asset="total"] .dot{display:none;}
+.alloc-seg.btc{background:var(--btc);}
+.alloc-legend .l-btc{color:#9AABF2;}
+.alloc-legend .l-fondo{color:#D7B666;}
+.sim-box{border-color:rgba(108,130,232,0.3);}
+.sim-title{color:#9AABF2;font-size:14px;}
+.sim-modo button.on{background:rgba(108,130,232,0.16);border-color:rgba(108,130,232,0.4);color:#C3CDF8;}
+.btn{border-radius:16px;font-size:14px;font-weight:600;letter-spacing:0;}
+.btn-actualizar{background:var(--bg3);border-color:var(--border2);}
+.btn-guardar{background:#B38D35;border-color:#B38D35;color:#1B1405;}
+.btn-backup{font-size:13.5px;letter-spacing:0;border-radius:14px;}
+.btn-exp{background:rgba(179,141,53,0.14);border-color:rgba(179,141,53,0.45);color:#E2C67E;}
+.btn-imp{background:var(--bg3);border-color:var(--border2);color:var(--text);}
+.field-input{font-family:var(--num);font-weight:400;}
+.field-input-wrap:focus-within{border-color:#B38D35;}
+input[type=range]::-webkit-slider-thumb{box-shadow:none;}
+.sube{color:#6FCF97!important}.baja{color:#EB7A7A!important}
+
+/* Gráfica interactiva */
+.g-card{background:var(--bg2);border-radius:22px;padding:16px 0 12px;margin:10px 0 12px;position:relative;}
+.g-lectura{padding:0 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;min-height:52px;}
+.g-fecha{font-size:13px;color:var(--text3);}
+.g-valor{font-family:var(--num);font-size:24px;font-weight:400;margin-top:2px;font-variant-numeric:tabular-nums;}
+.g-delta{font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums;}
+.g-gris{color:var(--text3);}
+.g-acciones{display:flex;gap:6px;}
+.g-icono{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--bg3);color:var(--text2);border:0;cursor:pointer;font:500 14px var(--sans);}
+.g-icono[aria-pressed="true"]{background:#B38D35;color:#1B1405;}
+.g-icono svg{width:18px;height:18px;}
+#g-lienzo{height:250px;margin-top:6px;touch-action:pan-y;}
+.g-aviso{margin:6px 16px 0;padding:9px 12px;border-radius:12px;background:var(--bg3);font-size:13px;line-height:1.5;color:var(--text2);}
+.g-aviso[hidden]{display:none;}
+.g-aviso b{color:var(--text);font-weight:600;}
+#g-chips{display:flex;gap:4px;padding:10px 12px 0;}
+#g-chips button{flex:1;padding:8px 0;border-radius:10px;font:500 13px var(--sans);color:var(--text3);background:none;border:0;cursor:pointer;}
+#g-chips button[aria-pressed="true"]{color:var(--text);background:var(--bg3);}
+#g-modos{display:flex;gap:6px;padding:12px 16px 2px;flex-wrap:wrap;}
+#g-modos button{padding:7px 12px;border-radius:999px;font:13px var(--sans);color:var(--text2);border:1px solid var(--bg4);background:none;cursor:pointer;}
+#g-modos button[aria-pressed="true"]{border-color:#B38D35;color:var(--text);}
+#g-leyenda{display:flex;flex-wrap:wrap;gap:14px;padding:10px 16px 0;font-size:12px;color:var(--text3);}
+#g-leyenda span{display:flex;align-items:center;gap:6px;}
+.g-tr{width:16px;height:0;border-top:2px solid;display:inline-block;}
+.g-disc{border-top:2px dashed #8DA3A1;}
+#g-claves{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bg4);border-radius:20px;overflow:hidden;margin:0 0 14px;}
+#g-claves:empty{display:none;}
+.g-clave{background:var(--bg2);padding:14px 16px;}
+.g-clave .t{font-size:12.5px;color:var(--text3);}
+.g-clave .v{font-family:var(--num);font-size:20px;margin-top:4px;font-variant-numeric:tabular-nums;}
+.g-clave .s{font-size:12px;color:var(--text3);margin-top:2px;}
+.g-lateral{display:none;border-left:1px solid var(--bg4);padding:4px 16px;overflow:auto;}
+.g-lateral h2{font-family:var(--num);font-weight:400;font-size:17px;margin:6px 0 10px;}
+.g-lateral dl{display:grid;grid-template-columns:1fr auto;row-gap:9px;font-size:13.5px;font-variant-numeric:tabular-nums;}
+.g-lateral dt{color:var(--text3);} .g-lateral dd{text-align:right;}
+.g-lateral label{display:flex;align-items:center;gap:9px;font-size:13.5px;padding:6px 0;color:var(--text2);}
+.g-lateral input{accent-color:#B38D35;}
+.g-girar{display:none;}
+.g-card.completa{position:fixed;inset:0;z-index:300;margin:0;border-radius:0;padding:calc(10px + var(--safe-top)) 0 10px;display:grid;grid-template-columns:1fr 250px;grid-template-rows:auto auto auto 1fr auto;background:var(--bg);}
+.g-card.completa .g-lectura{grid-column:1;grid-row:1;}
+.g-card.completa #g-medida{grid-column:1;grid-row:2;}
+.g-card.completa #g-sinbtc,.g-card.completa #g-sinlib{grid-column:1;grid-row:3;}
+.g-card.completa #g-lienzo{grid-column:1;grid-row:4;height:auto;min-height:0;}
+.g-card.completa .g-pie{grid-column:1;grid-row:5;}
+.g-card.completa #g-modos,.g-card.completa #g-leyenda{display:none;}
+.g-card.completa .g-lateral{display:block;grid-column:2;grid-row:1/6;}
+body.g-bloqueo{overflow:hidden;}
+@media (orientation:portrait){.g-card.completa{grid-template-columns:1fr;grid-template-rows:auto auto auto 1fr auto auto auto}
+  .g-card.completa .g-lateral{grid-column:1;grid-row:6;border-left:0;border-top:1px solid var(--bg4);max-height:34vh;}
+  .g-card.completa .g-girar{display:block;grid-row:7;text-align:center;font-size:12.5px;color:var(--text3);padding:4px;}}
+
+/* Copia compartida */
+.sync-box [hidden]{display:none!important;}
+.sync-box{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+.sync-tit{font-size:14px;font-weight:600;color:var(--text);}
+.sync-op{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--text2);padding:6px 0;}
+.sync-op input{accent-color:#B38D35;}
+.sync-banda{background:rgba(108,130,232,0.14);border:1px solid rgba(108,130,232,0.35);color:#C3CDF8;border-radius:12px;padding:8px 12px;font-size:13px;margin:2px 0 8px;}
+.sync-banda[hidden]{display:none;}
+/* Barra inferior */
+.barra{position:fixed;left:0;right:0;bottom:0;background:rgba(14,27,31,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:8px 0 calc(8px + var(--safe-bottom));z-index:150;}
+.barra nav{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);}
+.barra button{display:flex;flex-direction:column;align-items:center;gap:4px;font:500 11.5px var(--sans);color:var(--text3);padding:4px 0;background:none;border:0;cursor:pointer;}
+.barra button[aria-current="page"]{color:#D7B666;}
+.barra svg{width:22px;height:22px;}
+.toast{bottom:calc(var(--safe-bottom) + 96px);}
+button:focus-visible,a:focus-visible{outline:2px solid #D7B666;outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+</style>
+</head>
+<body>
+<div class="noise"></div><div class="glow"></div>
+<div class="toast" id="toast"></div>
+<div class="app">
+  <header>
+    <div class="logo">
+      <span class="logo-name">Mi patrimonio</span>
+      <span class="logo-fund">Vanguard <span>S&P 500</span></span>
+    </div>
+    <div class="last-update">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="last-update-text">Sin datos</span>
+    </div>
+  </header>
+  <div class="sync-banda" id="sync-banda" hidden></div>
+
+  <div class="asset-switch">
+    <button class="asset-tab active" data-asset="fondo" onclick="setAsset('fondo')"><span class="dot"></span>Fondo</button>
+    <button class="asset-tab" data-asset="btc" onclick="setAsset('btc')"><span class="dot"></span>Bitcoin</button>
+    <button class="asset-tab" data-asset="total" onclick="setAsset('total')"><span class="dot"></span>Total</button>
+  </div>
+
+  <!-- ═══════ VISTA FONDO ═══════ -->
+  <div class="view-asset" id="view-fondo">
+    <div class="main-card">
+      <div class="val-label">Valoración estimada</div>
+      <div class="val-main" id="val-main">—</div>
+      <div class="val-change neutral" id="val-change">Sin cambio</div>
+      <div class="nav-est-row">
+        <span class="nav-est-label">NAV estimado</span>
+        <span class="nav-est-val" id="nav-est-val">—</span>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">S&amp;P 500 · SPY</div>
+        <div class="stat-val" id="sp-price">—</div>
+        <div class="stat-chg neutral" id="sp-chg">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">EUR / USD</div>
+        <div class="stat-val" id="fx-price">—</div>
+        <div class="stat-chg neutral" id="fx-chg">—</div>
+      </div>
+    </div>
+
+    <div class="plus-grid">
+      <div class="plus-card total">
+        <div class="plus-label">Plusvalía total acumulada desde inicio</div>
+        <div class="plus-eur c-gold" id="plus-total-eur">—</div>
+        <div class="plus-pct c-gold" id="plus-total-pct">—</div>
+      </div>
+      <div class="plus-card" id="hoy-card">
+        <div class="plus-label">Variación vs base</div>
+        <div class="plus-eur c-muted" id="plus-hoy-eur">—</div>
+        <div class="plus-pct c-muted" id="plus-hoy-pct">—</div>
+      </div>
+      <div class="plus-card vs">
+        <div class="plus-label">Vs último guardado</div>
+        <div class="plus-eur c-muted" id="plus-ayer-eur">—</div>
+        <div class="plus-pct c-muted" id="plus-ayer-pct">sin datos aún</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ VISTA BITCOIN ═══════ -->
+  <div class="view-asset" id="view-btc" hidden>
+    <div class="main-card btc">
+      <div class="val-label">Valoración Bitcoin</div>
+      <div class="val-main" id="btc-val-main">—</div>
+      <div class="val-change neutral" id="btc-val-change">Sin cambio</div>
+      <div class="btc-price-row">
+        <span class="btc-price-label" id="btc-cant-label">— BTC en cartera</span>
+        <span class="btc-price-val" id="btc-precio-val">—</span>
+      </div>
+    </div>
+
+    <div class="plus-grid">
+      <div class="plus-card total">
+        <div class="plus-label">Plusvalía latente (no realizada)</div>
+        <div class="plus-eur c-gold" id="btc-plus-eur">—</div>
+        <div class="plus-pct c-gold" id="btc-plus-pct">—</div>
+      </div>
+      <div class="plus-card">
+        <div class="plus-label">Coste medio</div>
+        <div class="plus-eur c-muted" id="btc-coste-medio">—</div>
+        <div class="plus-pct c-muted">precio de compra</div>
+      </div>
+      <div class="plus-card vs">
+        <div class="plus-label">Coste total invertido</div>
+        <div class="plus-eur c-muted" id="btc-coste-total-disp">—</div>
+        <div class="plus-pct c-muted" id="btc-mult">—</div>
+      </div>
+    </div>
+
+    <div class="tax-box">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:none;color:var(--text2);margin-bottom:10px;">Si vendieras todo hoy (estimación FIFO)</div>
+      <div class="tax-row"><span class="tax-k">Ganancia patrimonial</span><span class="tax-v" id="tax-ganancia">—</span></div>
+      <div class="tax-row"><span class="tax-k">Impuesto estimado (tramos ahorro)</span><span class="tax-v" id="tax-impuesto">—</span></div>
+      <div class="tax-row"><span class="tax-k">Tipo efectivo</span><span class="tax-v" id="tax-tipo">—</span></div>
+      <div class="tax-row net"><span class="tax-k">Efectivo neto tras impuestos</span><span class="tax-v" id="tax-neto">—</span></div>
+      <p class="tax-note">Estimación orientativa con criterio FIFO sobre lotes registrados y tramos del ahorro IRPF (19/21/23/27/30%). No es asesoramiento fiscal. Vender es un hecho imponible; el traspaso a tu Ledger no lo es.</p>
+    </div>
+
+    <div class="sim-box">
+      <div class="sim-title">Simular venta parcial (FIFO)</div>
+      <div class="sim-modo">
+        <button id="sim-modo-eur" class="on" onclick="simSetModo('EUR')">Quiero obtener €</button>
+        <button id="sim-modo-btc" onclick="simSetModo('BTC')">Quiero vender BTC</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="sim-cant-label">Importe bruto a obtener (€)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-cant" step="any" min="0" inputmode="decimal" placeholder="ej: 10000" oninput="simCalcular()"><span class="field-unit" id="sim-cant-unit">€</span></div>
+      </div>
+      <div class="sim-quick">
+        <button onclick="simPct(10)">10%</button><button onclick="simPct(25)">25%</button><button onclick="simPct(50)">50%</button><button onclick="simPct(100)">Todo</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Precio de venta (€/BTC) · vacío = precio actual</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-precio" step="any" min="0" inputmode="decimal" oninput="simCalcular()"><span class="field-unit">€</span></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Otras ganancias del ahorro este año (€)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="sim-otras" step="any" inputmode="decimal" placeholder="0" oninput="simCalcular()"><span class="field-unit">€</span></div>
+      </div>
+      <div class="sim-warn" id="sim-warn"></div>
+      <div class="tax-row"><span class="tax-k">BTC que vendes</span><span class="tax-v" id="sim-btc">—</span></div>
+      <div class="tax-row"><span class="tax-k">Ingreso bruto</span><span class="tax-v" id="sim-ingreso">—</span></div>
+      <div class="tax-row"><span class="tax-k">Coste de adquisición FIFO</span><span class="tax-v" id="sim-coste">—</span></div>
+      <div class="tax-row"><span class="tax-k">Ganancia / pérdida patrimonial</span><span class="tax-v" id="sim-ganancia">—</span></div>
+      <div class="tax-row"><span class="tax-k">Impuesto de esta venta</span><span class="tax-v" id="sim-imp">—</span></div>
+      <div class="tax-row"><span class="tax-k">Tipo efectivo</span><span class="tax-v" id="sim-tipo">—</span></div>
+      <div class="tax-row net"><span class="tax-k">Efectivo neto</span><span class="tax-v" id="sim-neto">—</span></div>
+      <div class="tax-row"><span class="tax-k">Te quedarían</span><span class="tax-v" id="sim-resto">—</span></div>
+      <details class="sim-det">
+        <summary>Ver qué lotes se venden</summary>
+        <table class="sim-lotes"><thead><tr><th>Compra</th><th>€/BTC</th><th>BTC vendido</th><th>Ganancia</th></tr></thead><tbody id="sim-lotes-body"></tbody></table>
+      </details>
+      <p class="tax-note">FIFO: Hacienda considera que vendes primero los BTC más antiguos (nov-dic 2025, comprados más caros), aunque estén en tu Ledger. El impuesto es el incremento marginal en tu base del ahorro, contando las otras ganancias que indiques. Las pérdidas no pagan impuesto y pueden compensarse con otras ganancias del ahorro (detalle no simulado). Lotes según tu historial de Binance. No es asesoramiento fiscal.</p>
+    </div>
+  </div>
+
+  <!-- ═══════ VISTA TOTAL ═══════ -->
+  <div class="view-asset" id="view-total" hidden>
+    <div class="main-card total">
+      <div class="val-label">Patrimonio total</div>
+      <div class="val-main" id="tot-val-main">—</div>
+      <div class="val-change neutral" id="tot-val-change">Sin cambio</div>
+      <div class="alloc-bar">
+        <div class="alloc-seg fondo" id="alloc-fondo"></div>
+        <div class="alloc-seg btc" id="alloc-btc"></div>
+      </div>
+      <div class="alloc-legend">
+        <span class="l-fondo" id="alloc-fondo-txt">Fondo —</span>
+        <span class="l-btc" id="alloc-btc-txt">BTC —</span>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Fondo S&amp;P 500</div>
+        <div class="stat-val" id="tot-fondo-val">—</div>
+        <div class="stat-chg neutral" id="tot-fondo-plus">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bitcoin</div>
+        <div class="stat-val" id="tot-btc-val">—</div>
+        <div class="stat-chg neutral" id="tot-btc-plus">—</div>
+      </div>
+    </div>
+
+    <div class="plus-grid">
+      <div class="plus-card total">
+        <div class="plus-label">Plusvalía total combinada</div>
+        <div class="plus-eur c-gold" id="tot-plus-eur">—</div>
+        <div class="plus-pct c-gold" id="tot-plus-pct">—</div>
+      </div>
+      <div class="plus-card vs" style="grid-column:1 / -1;">
+        <div class="plus-label">Coste total invertido (fondo + BTC)</div>
+        <div class="plus-eur c-muted" id="tot-coste">—</div>
+        <div class="plus-pct c-muted" id="tot-coste-sub">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ GRÁFICA INTERACTIVA ═══════ -->
+  <section class="g-card" id="grafica">
+    <div class="g-lectura">
+      <div><div class="g-fecha" id="g-fecha">—</div><div class="g-valor" id="g-valor">—</div><div class="g-delta" id="g-delta"></div></div>
+      <div class="g-acciones">
+        <button class="g-icono" id="g-medir" aria-pressed="false" title="Medir entre dos fechas" aria-label="Medir entre dos fechas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20 20 4M7 17l2 2M10 14l2 2M13 11l2 2M16 8l2 2"/></svg></button>
+        <button class="g-icono" id="g-completa" title="Pantalla completa" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+    </div>
+    <div class="g-aviso" id="g-medida" hidden></div>
+    <div class="g-aviso" id="g-sinbtc" hidden>No se ha podido cargar el histórico de Bitcoin. La gráfica muestra solo el fondo.</div>
+    <div class="g-aviso" id="g-sinlib" hidden>No se ha podido cargar la gráfica. Comprueba la conexión y vuelve a abrir la app.</div>
+    <div id="g-lienzo" role="img" aria-label="Gráfica de evolución"></div>
+    <div class="g-pie">
+      <div id="g-chips" role="group" aria-label="Periodo"><button data-r="7">1S</button><button data-r="30">1M</button><button data-r="91">3M</button><button data-r="ytd">Año</button><button data-r="all" aria-pressed="true">Todo</button></div>
+      <div id="g-modos" role="group" aria-label="Qué ver"><button data-m="eur" aria-pressed="true">Valor</button><button data-m="pct">Rentabilidad</button><button data-m="dd">Caídas</button></div>
+      <div id="g-leyenda"></div>
+    </div>
+    <aside class="g-lateral">
+      <h2 id="g-lat-tit">En este periodo</h2>
+      <dl id="g-lat-stats"></dl>
+      <div id="g-lat-modos" style="margin-top:16px">
+        <label><input type="radio" name="g-m" value="eur" checked> Valor y aportado</label>
+        <label><input type="radio" name="g-m" value="pct"> Rentabilidad real</label>
+        <label><input type="radio" name="g-m" value="dd"> Caída desde máximo</label>
+      </div>
+      <button class="g-icono" style="width:auto;padding:0 16px;margin-top:14px" id="g-salir">Salir</button>
+    </aside>
+    <div class="g-girar">Gira el móvil para verla en horizontal</div>
+  </section>
+  <div id="g-claves"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-actualizar" id="btn-act" onclick="fetchMercado()">⟳ Actualizar datos</button>
+    <button class="btn btn-guardar" onclick="guardarSnapshot()">✦ Guardar hoy</button>
+  </div>
+  <button class="btn btn-reset-var" id="btn-reset-var" onclick="resetearVariacion()" style="width:100%;padding:11px;border-radius:12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--text2);letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform 0.1s;border:1px solid var(--border);background:var(--bg3);margin-bottom:4px;">↺ Resetear variación de mercado</button>
+  <p id="market-status" style="font-family:var(--num);font-size:11px;color:var(--text3);text-align:center;margin:-6px 0 10px;min-height:16px;"></p>
+
+  <div class="section" id="sec-navr4">
+    <div class="section-header" onclick="toggleSection('navr4')">
+      <span class="section-title">NAV oficial · Renta 4</span>
+      <span class="section-arrow open" id="arrow-navr4">▼</span>
+    </div>
+    <div class="section-body" id="body-navr4">
+      <a class="btn-backup btn-imp" href="https://www.r4.com" target="_blank" rel="noopener" onclick="abrirRenta4(event)" style="text-decoration:none;margin-bottom:10px;">↗ Abrir Renta 4</a>
+      <button class="btn-backup btn-imp" id="r4-btn-captura" style="margin-bottom:14px;" onclick="document.getElementById('r4-captura').click()">📷 Leer captura de Renta 4</button>
+      <input type="file" id="r4-captura" accept="image/*" hidden onchange="leerCapturaR4(this)">
+      <div class="field-group">
+        <label class="field-label">NAV oficial (€ / participación)</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="r4-nav" step="0.0001" min="0" inputmode="decimal" placeholder="ej: 80,1234">
+          <span class="field-unit">€</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Fecha del cierre de ese NAV</label>
+        <div class="field-input-wrap"><input class="field-input" type="date" id="r4-fecha" style="color-scheme:dark;"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Participaciones (solo si han cambiado)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="r4-partic" step="0.01" min="0" inputmode="decimal" placeholder="sin cambios"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Coste total según Renta 4 (opcional)</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="r4-coste" step="0.01" min="0" inputmode="decimal" placeholder="sin cambios">
+          <span class="field-unit">€</span>
+        </div>
+      </div>
+      <button class="btn-backup btn-exp" onclick="guardarNavRenta4()">✦ Guardar NAV oficial</button>
+      <p class="backup-info" id="r4-info">—</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('posicion')">
+      <span class="section-title">Mi posición</span>
+      <span class="section-arrow open" id="arrow-posicion">▼</span>
+    </div>
+    <div class="section-body" id="body-posicion">
+      <div class="field-group">
+        <label class="field-label">Participaciones</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="partic" value="" step="0.01" min="0" inputmode="decimal" oninput="guardarYCalcular()"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">NAV base (€ / participación)</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="nav-base" value="" step="0.0001" min="0" inputmode="decimal" oninput="guardarYCalcular()">
+          <span class="field-unit">€</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Coste total de la inversión (€)</label>
+        <div class="field-input-wrap">
+          <input class="field-input" type="number" id="coste-total" value="" step="1" min="0" inputmode="decimal" oninput="guardarYCalcular()">
+          <span class="field-unit">€</span>
+        </div>
+      </div>
+      <button class="btn-backup btn-exp" style="margin-top:4px;width:100%;padding:12px;border-radius:12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0.03em;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(215,182,102,0.08);border:1px solid rgba(215,182,102,0.25);color:var(--gold);" onclick="document.getElementById('ext-importe').value='';document.getElementById('modal-ext1').classList.remove('hidden')">+ Registrar aportación extraordinaria</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('btcpos')">
+      <span class="section-title">Mi Bitcoin</span>
+      <span class="section-arrow" id="arrow-btcpos">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-btcpos">
+      <div class="field-group">
+        <label class="field-label">Cantidad de BTC en cartera (Ledger)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="btc-cantidad" value="" step="0.00000001" min="0" inputmode="decimal" oninput="guardarBtcYCalcular()"><span class="field-unit">BTC</span></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Coste total invertido en BTC (€)</label>
+        <div class="field-input-wrap"><input class="field-input" type="number" id="btc-coste" value="" step="0.01" min="0" inputmode="decimal" oninput="guardarBtcYCalcular()"><span class="field-unit">€</span></div>
+      </div>
+      <p class="backup-info" style="margin-top:0;">El precio BTC/EUR se obtiene al pulsar <strong style="color:var(--gold)">Actualizar datos</strong>. La cantidad y el coste los introduces tú (desde tu Ledger y el historial de compras). La estimación fiscal usa estos dos valores con criterio FIFO simplificado sobre el coste medio.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('ajuste')">
+      <span class="section-title">Ajuste manual</span>
+      <span class="section-arrow" id="arrow-ajuste">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-ajuste">
+      <div class="slider-group">
+        <div class="slider-header"><span class="slider-label">S&amp;P 500 ajuste extra</span><span class="slider-value neutral" id="sp-adj-val">+0,0%</span></div>
+        <input type="range" id="sp-adj" min="-10" max="10" step="0.1" value="0" oninput="onSlider(this,'sp-adj-val');calcular()">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="slider-label">EUR/USD ajuste extra</span><span class="slider-value neutral" id="fx-adj-val">+0,0%</span></div>
+        <input type="range" id="fx-adj" min="-3" max="3" step="0.1" value="0" oninput="onSlider(this,'fx-adj-val');calcular()">
+      </div>
+    </div>
+  </div>
+
+
+  <div class="section" id="sec-historial">
+    <div class="section-header" onclick="toggleSection('historial')">
+      <span class="section-title">Historial de cierres</span>
+      <span class="section-arrow" id="arrow-historial">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-historial">
+      <ul class="hist-list" id="hist-list"><li class="hist-empty">Sin datos guardados aún</li></ul>
+    </div>
+  </div>
+
+
+  <div class="section" id="sec-backup">
+    <div class="section-header" onclick="toggleSection('backup')">
+      <span class="section-title">Copia de seguridad</span>
+      <span class="section-arrow" id="arrow-backup">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-backup">
+      <div class="backup-row">
+        <button class="btn-backup btn-exp" onclick="exportarDatos()">↑ Exportar datos</button>
+        <button class="btn-backup btn-imp" onclick="document.getElementById('imp-file').click()">↓ Importar datos</button>
+      </div>
+      <input type="file" id="imp-file" accept=".json" onchange="importarDatos(event)">
+      <div class="sync-box">
+        <div class="sync-tit">Compartir con otro móvil</div>
+        <p class="backup-info" style="margin-top:4px">Guarda una copia <strong style="color:var(--text2)">cifrada</strong> en GitHub para que otro móvil vea tus datos. Sin la contraseña, la copia es ilegible.</p>
+        <label class="sync-op"><input type="radio" name="sync-rol" value="editor" checked> Este es mi móvil: subo los datos</label>
+        <label class="sync-op"><input type="radio" name="sync-rol" value="lector"> Solo ver los datos de otro móvil</label>
+        <div class="field-group" style="margin-top:10px">
+          <label class="field-label" for="sync-pass">Contraseña compartida (mínimo 12 caracteres)</label>
+          <div class="field-input-wrap"><input class="field-input" type="password" id="sync-pass" autocomplete="new-password"></div>
+        </div>
+        <div class="field-group" id="sync-token-grupo">
+          <label class="field-label" for="sync-token">Token de GitHub (solo en tu móvil)</label>
+          <div class="field-input-wrap"><input class="field-input" type="password" id="sync-token" autocomplete="off"></div>
+        </div>
+        <div class="backup-row" style="margin-top:4px">
+          <button class="btn-backup btn-exp" id="sync-activar">Guardar y activar</button>
+          <button class="btn-backup btn-imp" id="sync-subir" hidden>↑ Subir ahora</button>
+          <button class="btn-backup btn-imp" id="sync-bajar" hidden>↓ Actualizar ahora</button>
+        </div>
+        <p class="backup-info" id="sync-estado">Desactivado</p>
+        <button class="btn-backup btn-imp" id="sync-off" hidden style="margin-top:8px">Desactivar en este móvil</button>
+      </div>
+
+      <button class="btn-reset" onclick="document.getElementById('modal-reset1').classList.remove('hidden')">⚠ Restaurar a cero</button>
+      <p class="backup-info">
+        <strong style="color:var(--text2)">Exportar</strong> genera un archivo JSON con tu historial, posición y configuración. Guárdalo en Google Drive, WhatsApp o donde prefieras.<br><br>
+        <strong style="color:var(--text2)">Importar</strong> restaura todos tus datos desde ese archivo. Úsalo si cambias de móvil o reinstalás la app.
+      </p>
+    </div>
+  </div>
+
+  <div class="proj-section">
+    <div class="section-header" onclick="toggleSection('proyeccion')" style="margin-bottom:0;cursor:pointer;">
+      <span class="section-title">Proyección a futuro</span>
+      <span class="section-arrow" id="arrow-proyeccion">▼</span>
+    </div>
+    <div class="section-body collapsed" id="body-proyeccion" style="margin-top:16px;">
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Capital inicial</span>
+          <span class="slider-value neutral" id="proj-cap-val">—</span>
+        </div>
+        <input type="range" id="proj-cap" min="1000" max="300000" step="1000" value="10000" oninput="onSliderProjCapital(this,'proj-cap-val'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Rentabilidad anual esperada</span>
+          <span class="slider-value up" id="proj-rent-val">7,0%</span>
+        </div>
+        <input type="range" id="proj-rent" min="1" max="15" step="0.5" value="7" oninput="onSliderProj(this,'proj-rent-val','%'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Años de proyección</span>
+          <span class="slider-value neutral" id="proj-anos-val">20 años</span>
+        </div>
+        <input type="range" id="proj-anos" min="1" max="40" step="1" value="20" oninput="onSliderProjAnos(this,'proj-anos-val'); calcProyeccion()">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Aportación mensual</span>
+          <span class="slider-value neutral" id="proj-ap-val">300 €</span>
+        </div>
+        <input type="range" id="proj-ap" min="0" max="1000" step="50" value="300" oninput="onSliderProjEur(this,'proj-ap-val'); calcProyeccion()">
+      </div>
+
+      <div class="proj-legend">
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#6FCF97"></div>Capital total</div>
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#B38D35"></div>Aportaciones</div>
+        <div class="proj-leg-item"><div class="proj-leg-dot" style="background:#D7B666;border-top:2px dashed #D7B666;background:none;height:0;width:14px;"></div>Invertido</div>
+      </div>
+
+      <div class="proj-canvas-wrap">
+        <canvas id="proj-chart" role="img" aria-label="Gráfica de proyección de inversión a futuro">Proyección de inversión futura.</canvas>
+      </div>
+
+      <div class="proj-grid">
+        <div class="proj-card full">
+          <div class="proj-card-label">Capital estimado final</div>
+          <div class="proj-card-val big" id="proj-total">—</div>
+          <div class="proj-card-sub" id="proj-total-sub">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Total invertido</div>
+          <div class="proj-card-val" id="proj-invertido">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Rentabilidad generada</div>
+          <div class="proj-card-val" style="color:var(--green)" id="proj-renta">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Multiplicador</div>
+          <div class="proj-card-val" id="proj-mult">—</div>
+        </div>
+        <div class="proj-card">
+          <div class="proj-card-label">Rentabilidad total %</div>
+          <div class="proj-card-val" style="color:var(--green)" id="proj-pct">—</div>
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px;">* Proyección orientativa basada en rentabilidad anual compuesta constante. La rentabilidad pasada no garantiza resultados futuros. S&P 500: media histórica ~10% anual nominal, ~7% real ajustado a inflación.</p>
+    </div>
+  </div>
+  <p class="note">Con clave de Finnhub, el S&amp;P 500 se actualiza solo cada 15 segundos con Wall Street abierto y muestra el último cierre cuando está cerrado. Los datos se obtienen automáticamente. Pulsa <strong style="color:var(--green)">Guardar hoy</strong> para registrar y construir la gráfica histórica.</p>
+</div>
+
+<div class="barra"><nav aria-label="Secciones">
+  <button data-ir="top" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>Resumen</button>
+  <button data-ir="historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Historial</button>
+  <button data-ir="navr4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8 9h8M8 13h5"/></svg>Renta 4</button>
+  <button data-ir="backup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Ajustes</button>
+</nav></div>
+<script>
+const FINNHUB_KEY = ''; // clave gratuita de finnhub.io (también vale ?finnhub=CLAVE en la URL)
+let state = {spPct:0, fxPct:0, spPrice:null, fxPrice:null, fecha:null};
+let valActual = 0;
+let fechaSnapshot = null; // fecha forzada para el snapshot (viene de Renta 4 vía URL)
+
+// ── ESTADO BITCOIN ──
+let btcState = {precio:null, precioPrev:null, pct:null, fecha:null};
+let btcValActual = 0;
+let assetView = localStorage.getItem('assetView') || 'fondo';
+
+function guardarBtcPosicion(){
+  localStorage.setItem('btcCantidad', document.getElementById('btc-cantidad').value);
+  localStorage.setItem('btcCoste', document.getElementById('btc-coste').value);
+}
+function cargarBtcPosicion(){
+  const c=localStorage.getItem('btcCantidad'), k=localStorage.getItem('btcCoste');
+  if(c) document.getElementById('btc-cantidad').value=c;
+  if(k) document.getElementById('btc-coste').value=k;
+}
+function guardarBtcYCalcular(){ guardarBtcPosicion(); calcularBtc(); calcularTotal(); }
+
+function guardarPosicion(){
+  localStorage.setItem('partic', document.getElementById('partic').value);
+  const navNuevo=document.getElementById('nav-base').value;
+  if(navNuevo!==localStorage.getItem('navBase')) localStorage.removeItem('navFecha'); // NAV a mano: fecha desconocida
+  localStorage.setItem('navBase', navNuevo);
+  localStorage.setItem('costeTotal', document.getElementById('coste-total').value);
+}
+function cargarPosicion(){
+  const p=localStorage.getItem('partic'), n=localStorage.getItem('navBase'), c=localStorage.getItem('costeTotal');
+  if(p) document.getElementById('partic').value=p;
+  if(n) document.getElementById('nav-base').value=n;
+  if(c) document.getElementById('coste-total').value=c;
+}
+function guardarYCalcular(){ guardarPosicion(); calcular(); }
+
+// ── SELECTOR DE VISTA (Fondo / BTC / Total) ──
+function setAsset(a){
+  assetView = a;
+  localStorage.setItem('assetView', a);
+  ['fondo','btc','total'].forEach(x=>{
+    document.getElementById('view-'+x).hidden = (x!==a);
+  });
+  document.querySelectorAll('.asset-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.asset===a);
+  });
+  if(a==='btc') calcularBtc();
+  if(a==='total') calcularTotal();
+  if(typeof Grafica!=='undefined'){ Grafica.colocar(); Grafica.render(); }
+}
+
+function fmtEur(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:'always'})+' €'; }
+function fmtNum(n,d){ return n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtFecha(iso){ return new Date(iso+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
+
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function setStatus(estado, texto){
+  document.getElementById('status-dot').className='status-dot '+estado;
+  document.getElementById('last-update-text').textContent=texto;
+}
+
+function onSlider(el,outId){
+  const v=parseFloat(el.value);
+  const pct=((v-parseFloat(el.min))/(parseFloat(el.max)-parseFloat(el.min)))*100;
+  el.style.setProperty('--pct',pct+'%');
+  const out=document.getElementById(outId);
+  out.textContent=(v>=0?'+':'')+v.toFixed(1)+'%';
+  out.className='slider-value '+(v>0?'up':v<0?'down':'neutral');
+}
+
+function calcular(){
+  const partic=parseFloat(document.getElementById('partic').value)||0;
+  const navBase=parseFloat(document.getElementById('nav-base').value)||0;
+  const costeTotal=parseFloat(document.getElementById('coste-total').value)||(partic*navBase);
+  const valBase=partic*navBase;
+  const spAdj=parseFloat(document.getElementById('sp-adj').value)||0;
+  const fxAdj=parseFloat(document.getElementById('fx-adj').value)||0;
+  const newNAV=navBase*(1+(state.spPct+spAdj)/100)*(1-(state.fxPct+fxAdj)/100);
+  const newVal=newNAV*partic;
+  valActual=newVal;
+  const diffHoy=newVal-valBase;
+  const diffHoyPct=valBase>0?(diffHoy/valBase)*100:0;
+
+  const vm=document.getElementById('val-main');
+  vm.textContent=fmtEur(newVal);
+  vm.className='val-main '+(diffHoy>0.01?'up':diffHoy<-0.01?'down':'');
+  const vc=document.getElementById('val-change');
+  if(Math.abs(diffHoy)<0.01){vc.textContent='Sin cambio vs base';vc.className='val-change neutral';}
+  else{const s=diffHoy>0?'+':'';vc.textContent=s+fmtEur(diffHoy)+'  ('+s+fmtNum(diffHoyPct,2)+'%)';vc.className='val-change '+(diffHoy>0?'up':'down');}
+  document.getElementById('nav-est-val').textContent=fmtNum(newNAV,4)+' €';
+
+  const plusTotalEur=newVal-costeTotal;
+  const plusTotalPct=costeTotal>0?(plusTotalEur/costeTotal)*100:0;
+  const ptEl=document.getElementById('plus-total-eur');
+  ptEl.textContent=(plusTotalEur>=0?'+':'')+fmtEur(plusTotalEur);
+  ptEl.className='plus-eur '+(plusTotalEur>=0?'c-gold':'c-red');
+  const ppEl=document.getElementById('plus-total-pct');
+  ppEl.textContent=(plusTotalPct>=0?'+':'')+fmtNum(plusTotalPct,2)+'%';
+  ppEl.className='plus-pct '+(plusTotalEur>=0?'c-gold':'c-red');
+
+  const phEl=document.getElementById('plus-hoy-eur');
+  phEl.textContent=(diffHoy>=0?'+':'')+fmtEur(diffHoy);
+  phEl.className='plus-eur '+(diffHoy>=0?'c-green':'c-red');
+  const phpEl=document.getElementById('plus-hoy-pct');
+  phpEl.textContent=(diffHoyPct>=0?'+':'')+fmtNum(diffHoyPct,2)+'%';
+  phpEl.className='plus-pct '+(diffHoy>=0?'c-green':'c-red');
+  document.getElementById('hoy-card').className='plus-card '+(diffHoy>=0?'hoy-pos':'hoy-neg');
+
+  const hist=cargarHistorial();
+  if(hist.length>0){
+    const ult=hist[hist.length-1];
+    const da=newVal-ult.val;
+    const daPct=ult.val>0?(da/ult.val)*100:0;
+    const paEl=document.getElementById('plus-ayer-eur');
+    paEl.textContent=(da>=0?'+':'')+fmtEur(da);
+    paEl.className='plus-eur '+(da>=0?'c-green':'c-red');
+    const papEl=document.getElementById('plus-ayer-pct');
+    papEl.textContent=(daPct>=0?'+':'')+fmtNum(daPct,2)+'% vs '+fmtFecha(ult.fecha);
+    papEl.className='plus-pct '+(da>=0?'c-green':'c-red');
+  }
+  // Recalcular las vistas dependientes
+  calcularBtc();
+  calcularTotal();
+}
+
+// ── IMPUESTO FIFO (base del ahorro IRPF) ──
+function impuestoAhorro(g){
+  if(g<=0) return 0;
+  const tramos=[[0,6000,0.19],[6000,50000,0.21],[50000,200000,0.23],[200000,300000,0.27],[300000,Infinity,0.30]];
+  let imp=0;
+  for(const [d,h,t] of tramos){ if(g>d) imp+=(Math.min(g,h)-d)*t; }
+  return imp;
+}
+
+// ── LOTES DE COMPRA BTC (orden FIFO) ──
+// Se guardan solo en el móvil (clave 'btcLotes'); el código público no contiene ningún dato personal.
+function btcLotes(){
+  try{ const l=JSON.parse(localStorage.getItem('btcLotes')||'[]'); return Array.isArray(l)?l.filter(x=>x&&x.btc>0&&x.eur>=0&&x.fecha).sort((a,b)=>a.fecha<b.fecha?-1:1):[]; }
+  catch(e){ return []; }
+}
+let simModo = 'EUR';
+
+function simSetModo(m){
+  simModo=m;
+  document.getElementById('sim-modo-eur').classList.toggle('on',m==='EUR');
+  document.getElementById('sim-modo-btc').classList.toggle('on',m==='BTC');
+  document.getElementById('sim-cant-label').textContent = m==='EUR' ? 'Importe bruto a obtener (€)' : 'BTC a vender';
+  document.getElementById('sim-cant-unit').textContent = m==='EUR' ? '€' : 'BTC';
+  document.getElementById('sim-cant').value='';
+  document.getElementById('sim-cant').placeholder = m==='EUR' ? 'ej: 10000' : 'ej: 0.05';
+  simCalcular();
+}
+function simPrecio(){
+  const p=parseFloat(document.getElementById('sim-precio').value);
+  return p>0 ? p : (btcState.precio||0);
+}
+function simPct(pct){
+  const total=btcLotes().reduce((a,l)=>a+l.btc,0);
+  const btc=total*pct/100;
+  const precio=simPrecio();
+  if(simModo==='EUR'){
+    if(!(precio>0)){ toast('Sin precio: pulsa Actualizar o escribe un precio'); return; }
+    document.getElementById('sim-cant').value=(Math.floor(btc*precio*100)/100).toFixed(2);
+  } else document.getElementById('sim-cant').value=btc.toFixed(8);
+  simCalcular();
+}
+// Consume lotes del más antiguo al más nuevo
+function fifoVenta(btcVender){
+  let resto=btcVender, coste=0; const det=[];
+  for(const l of btcLotes()){
+    const usado=Math.max(0,Math.min(l.btc,resto));
+    const pu=l.eur/l.btc;
+    det.push({...l, pu, usado, costeUsado:usado*pu});
+    coste+=usado*pu; resto-=usado;
+  }
+  return {coste, det, faltan:Math.max(0,resto)};
+}
+function simCalcular(){
+  const ids=['sim-btc','sim-ingreso','sim-coste','sim-ganancia','sim-imp','sim-tipo','sim-neto','sim-resto'];
+  const warn=document.getElementById('sim-warn');
+  const body=document.getElementById('sim-lotes-body');
+  const precio=simPrecio();
+  const cant=parseFloat(document.getElementById('sim-cant').value)||0;
+  const otras=parseFloat(document.getElementById('sim-otras').value)||0;
+  const totalBtc=btcLotes().reduce((a,l)=>a+l.btc,0);
+  warn.textContent='';
+  const vacio=()=>{ ids.forEach(i=>document.getElementById(i).textContent='—'); body.innerHTML=''; };
+  if(!(totalBtc>0)){ vacio(); warn.textContent='No hay lotes de compra guardados en este móvil: el simulador los necesita para el cálculo FIFO.'; return; }
+  if(!(precio>0)){ vacio(); if(cant>0) warn.textContent='Pulsa Actualizar datos o escribe un precio de venta'; return; }
+  if(!(cant>0)){ vacio(); return; }
+  let btc = simModo==='EUR' ? cant/precio : cant;
+  if(btc>totalBtc+1e-9){ warn.textContent='⚠ Superas tu saldo ('+fmtNum(totalBtc,8)+' BTC). Se simula la venta total.'; btc=totalBtc; }
+  const ingreso=btc*precio;
+  const f=fifoVenta(btc);
+  const gan=ingreso-f.coste;
+  // Impuesto marginal: base con la venta − base sin ella
+  const imp=Math.max(0, impuestoAhorro(otras+gan)-impuestoAhorro(Math.max(0,otras)));
+  const tipo=gan>0?(imp/gan)*100:0;
+  const set=(i,t,c)=>{const e=document.getElementById(i);e.textContent=t;e.style.color=c||'';};
+  set('sim-btc',fmtNum(btc,8)+' BTC');
+  set('sim-ingreso',fmtEur(ingreso));
+  set('sim-coste',fmtEur(f.coste));
+  set('sim-ganancia',(gan>=0?'+':'')+fmtEur(gan), gan>=0?'var(--green)':'var(--red)');
+  set('sim-imp', imp>0?'−'+fmtEur(imp):fmtEur(0), imp>0?'var(--red)':'');
+  set('sim-tipo', gan>0?fmtNum(tipo,1)+'%':'— (pérdida, 0 €)');
+  set('sim-neto',fmtEur(ingreso-imp));
+  const restoBtc=totalBtc-btc, restoCoste=btcLotes().reduce((a,l)=>a+l.eur,0)-f.coste;
+  set('sim-resto', fmtNum(restoBtc,8)+' BTC · coste '+fmtEur(Math.max(0,restoCoste)));
+  body.innerHTML=f.det.map(l=>{
+    const g=l.usado*precio-l.costeUsado;
+    const usado=l.usado>1e-12;
+    return '<tr class="'+(usado?'used':'')+'"><td>'+fmtFecha(l.fecha)+' '+l.fecha.slice(2,4)+'</td><td>'+fmtNum(l.pu,0)+'</td><td>'+(usado?fmtNum(l.usado,8):'—')+'</td><td class="'+(usado?(g>=0?'g-pos':'g-neg'):'')+'">'+(usado?(g>=0?'+':'')+fmtNum(g,2):'—')+'</td></tr>';
+  }).join('');
+}
+
+// ── CÁLCULO BITCOIN ──
+function calcularBtc(){
+  const cant=parseFloat(document.getElementById('btc-cantidad').value)||0;
+  const coste=parseFloat(document.getElementById('btc-coste').value)||0;
+  const precio=btcState.precio||0;
+  const val=cant*precio;
+  btcValActual=val;
+
+  const vm=document.getElementById('btc-val-main');
+  vm.textContent= precio>0 ? fmtEur(val) : '—';
+  const plus=val-coste;
+  vm.className='val-main '+(precio>0?(plus>0.01?'up':plus<-0.01?'down':''):'');
+
+  // Variación diaria del precio
+  const vc=document.getElementById('btc-val-change');
+  if(precio>0 && btcState.pct!==null && !isNaN(btcState.pct)){
+    const s=btcState.pct>=0?'+':'';
+    // Euros ganados o perdidos en 24 h: valor actual menos el valor que tenía hace 24 h
+    const dEur=val-val/(1+btcState.pct/100);
+    vc.textContent=s+fmtEur(dEur)+' ('+s+fmtNum(btcState.pct,2)+'%) en 24 h';
+    vc.className='val-change '+(btcState.pct>0?'up':btcState.pct<0?'down':'neutral');
+  } else if(precio>0){ vc.textContent='Precio en vivo (BTC/EUR)'; vc.className='val-change neutral'; }
+  else { vc.textContent='Pulsa Actualizar para el precio'; vc.className='val-change neutral'; }
+
+  document.getElementById('btc-cant-label').textContent=fmtNum(cant,8)+' BTC en cartera';
+  document.getElementById('btc-precio-val').textContent= precio>0 ? fmtEur(precio) : '—';
+
+  // Plusvalía latente
+  const peEl=document.getElementById('btc-plus-eur');
+  const ppEl=document.getElementById('btc-plus-pct');
+  if(precio>0){
+    peEl.textContent=(plus>=0?'+':'')+fmtEur(plus);
+    peEl.className='plus-eur '+(plus>=0?'c-gold':'c-red');
+    const pct=coste>0?(plus/coste)*100:0;
+    ppEl.textContent=(pct>=0?'+':'')+fmtNum(pct,2)+'%';
+    ppEl.className='plus-pct '+(plus>=0?'c-gold':'c-red');
+  } else { peEl.textContent='—'; ppEl.textContent='—'; }
+
+  const costeMedio=cant>0?coste/cant:0;
+  document.getElementById('btc-coste-medio').textContent= costeMedio>0 ? fmtEur(costeMedio) : '—';
+  document.getElementById('btc-coste-total-disp').textContent= fmtEur(coste);
+  document.getElementById('btc-mult').textContent= (precio>0&&coste>0) ? 'x'+fmtNum(val/coste,2)+' sobre coste' : '—';
+
+  // Estimación fiscal FIFO (venta total hoy)
+  if(precio>0 && val>0){
+    const ganancia=Math.max(0,val-coste);
+    const imp=impuestoAhorro(ganancia);
+    const tipo=ganancia>0?(imp/ganancia)*100:0;
+    const neto=val-imp;
+    document.getElementById('tax-ganancia').textContent=(ganancia>=0?'+':'')+fmtEur(ganancia);
+    document.getElementById('tax-impuesto').textContent='−'+fmtEur(imp);
+    document.getElementById('tax-tipo').textContent=fmtNum(tipo,1)+'%';
+    document.getElementById('tax-neto').textContent=fmtEur(neto);
+  } else {
+    ['tax-ganancia','tax-impuesto','tax-tipo','tax-neto'].forEach(id=>document.getElementById(id).textContent='—');
+  }
+  simCalcular();
+}
+
+// ── CÁLCULO PATRIMONIO TOTAL ──
+function calcularTotal(){
+  const costeFondo=parseFloat(document.getElementById('coste-total').value)||0;
+  const costeBtc=parseFloat(document.getElementById('btc-coste').value)||0;
+  const valFondo=valActual||0;
+  const valBtc=btcValActual||0;
+  const valTot=valFondo+valBtc;
+  const costeTot=costeFondo+costeBtc;
+  const plusTot=valTot-costeTot;
+
+  const vm=document.getElementById('tot-val-main');
+  vm.textContent= valTot>0 ? fmtEur(valTot) : '—';
+  vm.className='val-main '+(plusTot>0.01?'up':plusTot<-0.01?'down':'');
+
+  const vc=document.getElementById('tot-val-change');
+  if(valTot>0){
+    const pct=costeTot>0?(plusTot/costeTot)*100:0;
+    const s=plusTot>=0?'+':'';
+    vc.textContent=s+fmtEur(plusTot)+'  ('+s+fmtNum(pct,2)+'%)';
+    vc.className='val-change '+(plusTot>=0?'up':'down');
+  } else { vc.textContent='Sin datos'; vc.className='val-change neutral'; }
+
+  // Reparto de activos
+  const pf=valTot>0?(valFondo/valTot)*100:50;
+  const pb=valTot>0?(valBtc/valTot)*100:50;
+  document.getElementById('alloc-fondo').style.width=pf+'%';
+  document.getElementById('alloc-btc').style.width=pb+'%';
+  document.getElementById('alloc-fondo-txt').textContent='Fondo '+fmtNum(pf,1)+'%';
+  document.getElementById('alloc-btc-txt').textContent='BTC '+fmtNum(pb,1)+'%';
+
+  // Tarjetas resumen
+  document.getElementById('tot-fondo-val').textContent= valFondo>0 ? fmtEur(valFondo) : '—';
+  document.getElementById('tot-btc-val').textContent= valBtc>0 ? fmtEur(valBtc) : '—';
+  const plusF=valFondo-costeFondo, plusB=valBtc-costeBtc;
+  const fp=document.getElementById('tot-fondo-plus');
+  fp.textContent= valFondo>0 ? (plusF>=0?'+':'')+fmtEur(plusF) : '—';
+  fp.className='stat-chg '+(plusF>=0?'up':'down');
+  const bp=document.getElementById('tot-btc-plus');
+  bp.textContent= valBtc>0 ? (plusB>=0?'+':'')+fmtEur(plusB) : '—';
+  bp.className='stat-chg '+(plusB>=0?'up':'down');
+
+  const peEl=document.getElementById('tot-plus-eur');
+  peEl.textContent= valTot>0 ? (plusTot>=0?'+':'')+fmtEur(plusTot) : '—';
+  peEl.className='plus-eur '+(plusTot>=0?'c-gold':'c-red');
+  const ppEl=document.getElementById('tot-plus-pct');
+  const pctTot=costeTot>0?(plusTot/costeTot)*100:0;
+  ppEl.textContent= valTot>0 ? (pctTot>=0?'+':'')+fmtNum(pctTot,2)+'%' : '—';
+  ppEl.className='plus-pct '+(plusTot>=0?'c-gold':'c-red');
+
+  document.getElementById('tot-coste').textContent=fmtEur(costeTot);
+  if(typeof Grafica!=='undefined') Grafica.pedir();
+  document.getElementById('tot-coste-sub').textContent='Fondo '+fmtEur(costeFondo)+' · BTC '+fmtEur(costeBtc);
+}
+
+// ── CONTROL HORARIO NYSE ──
+function viernesSanto(anyo){
+  // Algoritmo de Butcher para calcular Pascua
+  const a=anyo%19,b=Math.floor(anyo/100),c=anyo%100;
+  const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const mes=Math.floor((h+l-7*m+114)/31);
+  const dia=((h+l-7*m+114)%31)+1;
+  // Pascua encontrada, Viernes Santo = 2 días antes
+  const pascua=new Date(anyo,mes-1,dia);
+  pascua.setDate(pascua.getDate()-2);
+  return {m:pascua.getMonth()+1, d:pascua.getDate()};
+}
+
+function diaHabilNY(ny){
+  // Devuelve true si es día hábil en NYSE
+  const diaSemana=ny.getDay();
+  const mes=ny.getMonth()+1;
+  const dia=ny.getDate();
+  const anyo=ny.getFullYear();
+  if(diaSemana===0||diaSemana===6) return false;
+  const festivos=['1/1','7/4','12/25'];
+  if(festivos.includes(mes+'/'+dia)) return false;
+  function lunesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
+  function ultimoLunes(m){const d=new Date(anyo,m,0);while(d.getDay()!==1)d.setDate(d.getDate()-1);return d.getDate();}
+  function juevesN(m,n){const d=new Date(anyo,m-1,1);let c=0;while(d.getMonth()===m-1){if(d.getDay()===4){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}return 0;}
+  const vs=viernesSanto(anyo);
+  const fm=[{m:1,d:lunesN(1,3)},{m:2,d:lunesN(2,3)},{m:5,d:ultimoLunes(5)},{m:9,d:lunesN(9,1)},{m:11,d:juevesN(11,4)},{m:vs.m,d:vs.d}];
+  return !fm.some(f=>f.m===mes&&f.d===dia);
+}
+
+function claveUltimosCierre(){
+  // Genera una clave única para el último cierre de NYSE disponible
+  // Formato: YYYY-MM-DD del día cuyo cierre ya está disponible
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  const cierra=16*60;
+  // Si aún no ha cerrado hoy, el último cierre es el día hábil anterior
+  // Si ya cerró (>=16:00 NY), el último cierre es hoy (si es día hábil)
+  let diaRef = new Date(ny);
+  if(horaNY < cierra || !diaHabilNY(ny)){
+    // Retroceder al último día hábil
+    diaRef.setDate(diaRef.getDate()-1);
+    while(!diaHabilNY(diaRef)) diaRef.setDate(diaRef.getDate()-1);
+  }
+  return diaRef.getFullYear()+'-'+String(diaRef.getMonth()+1).padStart(2,'0')+'-'+String(diaRef.getDate()).padStart(2,'0');
+}
+
+function estadoMercado(){
+  const ahora=new Date();
+  const ny=new Date(ahora.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const horaNY=ny.getHours()*60+ny.getMinutes();
+  const abre=9*60+30, cierra=16*60;
+
+  // Fin de semana o festivo
+  if(!diaHabilNY(ny)){
+    return {ok:false, msg:'Mercado cerrado · fin de semana o festivo'};
+  }
+
+  // Sesión abierta
+  if(horaNY>=abre && horaNY<cierra){
+    const r=cierra-horaNY;
+    return {ok:false, msg:'Sesión abierta · cierra en '+Math.floor(r/60)+'h '+(r%60)+'m (hora NY)'};
+  }
+
+  // Antes de abrir (madrugada NY) — bloquear hasta el cierre de hoy
+  if(horaNY<abre){
+    const r=abre-horaNY;
+    return {ok:false, msg:'Mercado abre en '+Math.floor(r/60)+'h '+(r%60)+'m · actualiza tras el cierre'};
+  }
+
+  // Ya cerró — comprobar si ya actualizamos este cierre
+  const clave=claveUltimosCierre();
+  const yaActualizado=localStorage.getItem('ultimaActualizacion')===clave;
+  if(yaActualizado){
+    return {ok:false, msg:'✓ Ya actualizado · próximo cierre mañana ~22:00h'};
+  }
+
+  return {ok:true, msg:'Cierre disponible · '+clave};
+}
+
+function actualizarEstadoBoton(){
+  const btn=document.getElementById('btn-act');
+  const info=document.getElementById('market-status');
+  if(hayTiempoReal()){
+    btn.disabled=false; btn.style.opacity='1';
+    if(info) info.textContent = sesionAbierta()
+      ? 'Wall Street abierto · se actualiza cada 15 s'
+      : 'Wall Street cerrado · mostrando el último cierre';
+    return;
+  }
+  const est=estadoMercado();
+  if(est.ok){btn.disabled=false;btn.style.opacity='1';if(info)info.textContent='';}
+  else{btn.disabled=true;btn.style.opacity='0.45';if(info)info.textContent=est.msg;}
+}
+
+// ── DATOS DE MERCADO: S&P 500 (SPY) EN TIEMPO REAL + EUR/USD ──
+// Fuente principal: Finnhub (gratis, tiempo real, ~60 consultas/min).
+// Sin clave de Finnhub no hay dato del S&P 500 (la clave se guarda solo en el móvil).
+// La variación se calcula desde el día del NAV oficial ("navFecha"), no solo desde ayer,
+// para no contar dos veces la misma sesión cuando se carga un NAV nuevo de Renta 4.
+function claveFinnhub(){ return (localStorage.getItem('finnhubKey')||FINNHUB_KEY||'').trim(); }
+function hayTiempoReal(){ return claveFinnhub().length>0; }
+
+function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fechaNY(ms){ return new Date(ms).toLocaleDateString('en-CA',{timeZone:'America/New_York'}); }
+function diaHabilAnterior(iso){
+  const [y,m,d]=iso.split('-').map(Number);
+  const f=new Date(y,m-1,d);
+  do{ f.setDate(f.getDate()-1); }while(!diaHabilNY(f));
+  return isoLocal(f);
+}
+function ahoraNY(){ return new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'})); }
+function sesionAbierta(){
+  const ny=ahoraNY();
+  if(!diaHabilNY(ny)) return false;
+  const h=ny.getHours()*60+ny.getMinutes();
+  return h>=9*60+30 && h<16*60;
+}
+
+// Cierres de SPY conocidos {fecha: precio}, para anclar la variación al día del NAV
+function cargarCierres(){ try{return JSON.parse(localStorage.getItem('spCierres')||'{}');}catch(e){return {};} }
+function guardarCierres(c){
+  const claves=Object.keys(c).sort();
+  while(claves.length>40) delete c[claves.shift()];
+  localStorage.setItem('spCierres',JSON.stringify(c));
+}
+
+async function obtenerSP(){
+  const key=claveFinnhub();
+  if(key){
+    const r=await fetch('https://finnhub.io/api/v1/quote?symbol=SPY&token='+encodeURIComponent(key));
+    if(r.status===401||r.status===403) throw new Error('Clave de Finnhub no válida');
+    if(r.status===429) throw new Error('Límite de Finnhub alcanzado');
+    const j=await r.json();
+    if(!j || !(j.c>0) || !(j.pc>0) || !j.t) throw new Error('Sin datos S&P 500 (Finnhub)');
+    return {c:j.c, pc:j.pc, fecha:fechaNY(j.t*1000), fuente:'Finnhub'};
+  }
+  throw new Error('Falta la clave de Finnhub en este móvil (ábrela con el enlace ?finnhub=…)');
+}
+
+let _fxCache=null; // {ts, desde, data}
+async function obtenerFX(navFecha){
+  const hace=new Date(); hace.setDate(hace.getDate()-7);
+  let desde=hace.toISOString().split('T')[0];
+  if(navFecha && navFecha<desde) desde=navFecha;
+  if(_fxCache && _fxCache.desde===desde && Date.now()-_fxCache.ts<15*60000) return _fxCache.data;
+  const r=await fetch(`https://api.frankfurter.dev/v1/${desde}..?base=USD&symbols=EUR`);
+  const data=await r.json();
+  _fxCache={ts:Date.now(), desde, data};
+  return data;
+}
+
+let _mercadoOcupado=false;
+async function actualizarMercado(opts){
+  const silencioso=!!(opts&&opts.silencioso);
+  if(_mercadoOcupado) return;
+  _mercadoOcupado=true;
+  const btn=document.getElementById('btn-act');
+  if(!silencioso){
+    btn.disabled=true;
+    btn.innerHTML='<span class="spin">⟳</span> Obteniendo datos...';
+    setStatus('loading','Consultando mercados...');
+  }
+  try{
+    const navFecha=localStorage.getItem('navFecha')||null;
+    const [sp, fxData] = await Promise.all([obtenerSP(), obtenerFX(navFecha)]);
+
+    // ── S&P 500 ──
+    if(isNaN(sp.c)||isNaN(sp.pc)||sp.pc===0) throw new Error('Datos S&P 500 inválidos');
+    const enSesion = sp.fecha===fechaNY(Date.now()) && sesionAbierta();
+    const cierres=cargarCierres();
+    cierres[diaHabilAnterior(sp.fecha)]=sp.pc;
+    if(!enSesion) cierres[sp.fecha]=sp.c;
+    guardarCierres(cierres);
+
+    // Referencia: cierre del día del NAV oficial; si no se conoce, el cierre anterior (como antes)
+    let ref=sp.pc, anclado=false;
+    if(navFecha && cierres[navFecha]){ ref=cierres[navFecha]; anclado=true; }
+    const spPct=((sp.c-ref)/ref)*100;     // usado para estimar el NAV
+    const spDia=((sp.c-sp.pc)/sp.pc)*100;  // variación de la sesión (como en Google)
+
+    // ── EUR/USD (BCE, un dato al día) ──
+    if(!fxData || !fxData.rates) throw new Error('Sin datos EUR/USD');
+    const fechas=Object.keys(fxData.rates).sort();
+    if(fechas.length===0) throw new Error('Sin datos EUR/USD');
+    const fechaFx=fechas[fechas.length-1];
+    const usdEur=fxData.rates[fechaFx].EUR;
+    if(isNaN(usdEur)||usdEur===0) throw new Error('Dato EUR/USD inválido');
+    if((Date.now()-new Date(fechaFx))/86400000>5) throw new Error('Dato EUR/USD demasiado antiguo: '+fechaFx);
+    const fxPrice=parseFloat((1/usdEur).toFixed(6));
+    let fxRefFecha=null;
+    if(navFecha){
+      const prev=fechas.filter(f=>f<=navFecha);
+      if(prev.length) fxRefFecha=prev[prev.length-1];
+    } else if(fechas.length>=2){
+      fxRefFecha=fechas[fechas.length-2];
+    }
+    let fxPct=0;
+    if(fxRefFecha){
+      const fxRef=1/fxData.rates[fxRefFecha].EUR;
+      const fxExacto=1/usdEur; // sin redondear, para no crear variaciones fantasma
+      fxPct=((fxExacto-fxRef)/fxRef)*100;
+    }
+
+    if(Math.abs(spPct)>15) throw new Error('Variación S&P 500 sospechosa: '+spPct.toFixed(2)+'%');
+    if(Math.abs(fxPct)>5) throw new Error('Variación EUR/USD sospechosa: '+fxPct.toFixed(2)+'%');
+
+    const ahora=new Date();
+    const horaStr=ahora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    const fechaStr = enSesion
+      ? 'En vivo · '+horaStr
+      : 'Cierre '+fmtFecha(sp.fecha)+' · '+horaStr;
+
+    state={spPct, fxPct, spPrice:sp.c, fxPrice, fecha:fechaStr, spDia, spFecha:sp.fecha, enSesion, anclado};
+
+    document.getElementById('sp-price').textContent=fmtNum(sp.c,2);
+    document.getElementById('sp-chg').textContent=(spDia>=0?'+':'')+fmtNum(spDia,2)+'%'+(enSesion?' hoy':'');
+    document.getElementById('sp-chg').className='stat-chg '+(spDia>0?'up':spDia<0?'down':'neutral');
+    document.getElementById('fx-price').textContent=fmtNum(fxPrice,4);
+    document.getElementById('fx-chg').textContent=(fxPct>=0?'+':'')+fmtNum(fxPct,3)+'%';
+    document.getElementById('fx-chg').className='stat-chg '+(fxPct>0?'up':fxPct<0?'down':'neutral');
+
+    if(!silencioso){
+      document.getElementById('sp-adj').value=0; document.getElementById('fx-adj').value=0;
+      onSlider(document.getElementById('sp-adj'),'sp-adj-val');
+      onSlider(document.getElementById('fx-adj'),'fx-adj-val');
+    }
+
+    localStorage.setItem('marketData', JSON.stringify({spPct,fxPct,spPrice:sp.c,fxPrice,fecha:fechaStr,spDia,spFecha:sp.fecha,ts:Date.now()}));
+    setStatus('live', fechaStr+(sp.fuente==='Finnhub'?'':' · '+sp.fuente));
+    if(!silencioso) toast('✓ Datos actualizados');
+    calcular();
+    if(!silencioso) await fetchBtcPrecio();
+    if(!enSesion) localStorage.setItem('ultimaActualizacion', claveUltimosCierre());
+  }catch(err){
+    console.error(err);
+    const motivo=(err&&err.message)?err.message:'No se pudieron cargar los datos';
+    if(!silencioso){
+      setStatus('error','Error al obtener datos · inténtalo de nuevo');
+      toast('⚠ '+motivo);
+    } else if(document.getElementById('sp-price').textContent==='—'){
+      // Sin ningún dato en pantalla: decir por qué, en lugar de dejar las tarjetas en blanco
+      setStatus('error','Sin datos de mercado: '+motivo);
+      document.getElementById('sp-chg').textContent=motivo;
+    }
+  }finally{
+    _mercadoOcupado=false;
+    btn.innerHTML='⟳ Actualizar datos';
+    actualizarEstadoBoton();
+  }
+}
+
+// Botón "Actualizar datos"
+async function fetchMercado(){
+  if(!hayTiempoReal()){
+    const est=estadoMercado();
+    if(!est.ok){toast('⏳ '+est.msg);return;}
+  }
+  await actualizarMercado({silencioso:false});
+}
+
+// ── FETCH PRECIO BITCOIN (CoinGecko · gratuito, sin clave) ──
+// Fuentes de precio BTC/EUR, en orden. Si una falla, se prueba la siguiente.
+// Binance y Coinbase dan el precio al instante; CoinGecko queda de respaldo (refresca más despacio).
+const BTC_FUENTES = [
+  {nombre:'Binance', url:'https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCEUR',
+   leer:d=>({precio:parseFloat(d.lastPrice), pct:parseFloat(d.priceChangePercent)})},
+  {nombre:'Coinbase', url:'https://api.coinbase.com/v2/prices/BTC-EUR/spot',
+   leer:d=>({precio:parseFloat(d&&d.data&&d.data.amount), pct:null})},
+  {nombre:'CoinGecko', url:'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&include_24hr_change=true',
+   leer:d=>({precio:d&&d.bitcoin&&d.bitcoin.eur, pct:d&&d.bitcoin&&d.bitcoin.eur_24h_change})}
+];
+let _btcOcupado=false, _btcFuente=null;
+const _btcPausa={}; // fuente → hasta cuándo se salta tras fallar
+async function fetchBtcPrecio(){
+  if(_btcOcupado) return false;   // no amontonar consultas si la red va lenta
+  _btcOcupado=true;
+  try{
+    const ahora=Date.now();
+    const activas=BTC_FUENTES.filter(f=>!(_btcPausa[f.nombre]>ahora));
+    for(const f of (activas.length?activas:BTC_FUENTES)){
+      try{
+        const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),8000);
+        const r=await fetch(f.url,{signal:ctrl.signal,cache:'no-store'}); clearTimeout(to);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const v=f.leer(await r.json());
+        if(typeof v.precio!=='number' || !(v.precio>0)) throw new Error('Sin precio');
+        // Coinbase no da la variación 24 h: se conserva la última conocida
+        let pct=(typeof v.pct==='number' && !isNaN(v.pct)) ? v.pct
+               : ((typeof btcState.pct==='number' && !isNaN(btcState.pct)) ? btcState.pct : null); // desconocida: no se inventa un 0
+        // Si el precio salta más de un 15 % respecto al anterior, se descarta este dato
+        if(btcState.precio>0 && Math.abs(v.precio/btcState.precio-1)>0.15) throw new Error('Salto sospechoso');
+        btcState={precio:v.precio, precioPrev:btcState.precio, pct, fecha:new Date().toISOString()};
+        _btcFuente=f.nombre;
+        localStorage.setItem('btcData', JSON.stringify({precio:v.precio, pct, ts:Date.now(), fuente:f.nombre}));
+        calcularBtc(); calcularTotal();
+        return true;
+      }catch(e){
+        console.warn('BTC '+f.nombre+':', e.message||e);
+        if(f!==BTC_FUENTES[BTC_FUENTES.length-1]) _btcPausa[f.nombre]=Date.now()+5*60000; // saltarla 5 min
+      }
+    }
+    return false; // ninguna fuente respondió: se mantiene el último precio
+  }finally{ _btcOcupado=false; }
+}
+
+function cargarBtcCache(){
+  const raw=localStorage.getItem('btcData');
+  if(!raw) return false;
+  try{
+    const d=JSON.parse(raw);
+    if((Date.now()-d.ts)/3600000>1) return false; // BTC 24/7: caché válida 1h
+    btcState={precio:d.precio, precioPrev:null, pct:d.pct, fecha:null};
+    return true;
+  }catch(e){return false;}
+}
+
+function cargarDatosCache(){
+  const raw=localStorage.getItem('marketData');
+  if(!raw) return false;
+  try{
+    const d=JSON.parse(raw);
+    if((Date.now()-d.ts)/3600000>28) return false; // más de 28h → ignorar
+    state={spPct:d.spPct, fxPct:d.fxPct, spPrice:d.spPrice, fxPrice:d.fxPrice, fecha:d.fecha};
+    document.getElementById('sp-price').textContent=d.spPrice?fmtNum(d.spPrice,2):'—';
+    const dia=(typeof d.spDia==='number')?d.spDia:d.spPct;
+    document.getElementById('sp-chg').textContent=(dia>=0?'+':'')+fmtNum(dia,2)+'%';
+    document.getElementById('sp-chg').className='stat-chg '+(dia>0?'up':dia<0?'down':'neutral');
+    document.getElementById('fx-price').textContent=d.fxPrice?fmtNum(d.fxPrice,4):'—';
+    document.getElementById('fx-chg').textContent=(d.fxPct>=0?'+':'')+fmtNum(d.fxPct,3)+'%';
+    document.getElementById('fx-chg').className='stat-chg '+(d.fxPct>0?'up':d.fxPct<0?'down':'neutral');
+    setStatus('live', d.fecha||'Cacheado');
+    return true;
+  }catch(e){return false;}
+}
+
+// ── HISTORIAL ──
+function cargarHistorial(){ try{return JSON.parse(localStorage.getItem('historial')||'[]');}catch(e){return[];} }
+function guardarHistorial(h){ localStorage.setItem('historial',JSON.stringify(h)); }
+
+function guardarSnapshot(){
+  // Con fecha de Renta 4 se guarda el valor OFICIAL (participaciones × NAV de ese cierre),
+  // no la estimación del momento, para que cada día del historial lleve su valor real.
+  const partic=parseFloat(document.getElementById('partic').value)||0;
+  const navBase=parseFloat(document.getElementById('nav-base').value)||0;
+  const oficial = !!fechaSnapshot && localStorage.getItem('navFecha')===fechaSnapshot && partic>0 && navBase>0;
+  const valor = oficial ? partic*navBase : valActual;
+  if(valor<=0){toast('Actualiza primero los datos');return;}
+  if(!oficial && hayTiempoReal() && sesionAbierta() && !confirm('Wall Street sigue abierto: el valor es provisional. ¿Guardar igualmente?')) return;
+  const hist=cargarHistorial();
+  const hoy=isoLocal(new Date());
+  const fechaUsar = fechaSnapshot || hoy;
+  const idx=hist.findIndex(h=>h.fecha===fechaUsar);
+  const snap={fecha:fechaUsar,val:Math.round(valor*100)/100};
+  const etiqueta = oficial ? ' · valor oficial' : (fechaUsar===hoy ? ' · estimado' : '');
+  if(idx>=0){hist[idx]=snap;toast('✦ Actualizado · '+fmtFecha(fechaUsar)+etiqueta);}
+  else{hist.push(snap);hist.sort((a,b)=>a.fecha>b.fecha?1:-1);toast('✦ Guardado · '+fmtFecha(fechaUsar)+etiqueta);}
+  guardarHistorial(hist);
+  renderHistorial(); renderGrafica();
+  // Limpiar fecha forzada tras guardar
+  fechaSnapshot=null;
+  localStorage.removeItem('fechaSnapshot');
+  if(oficial) setTimeout(()=>toast('📅 Cierre del '+fmtFecha(fechaUsar)+': '+fmtEur(snap.val)+' (Renta 4)'),1500);
+  else if(fechaUsar!==hoy) setTimeout(()=>toast('📅 Guardado con fecha '+fmtFecha(fechaUsar)),1500);
+}
+
+function borrarSnapshot(fecha){
+  guardarHistorial(cargarHistorial().filter(h=>h.fecha!==fecha));
+  renderHistorial(); renderGrafica(); toast('Eliminado');
+}
+
+function renderHistorial(){
+  const hist=cargarHistorial();
+  const ul=document.getElementById('hist-list');
+  if(hist.length===0){ul.innerHTML='<li class="hist-empty">Sin datos guardados aún</li>';return;}
+  ul.innerHTML=[...hist].reverse().map((h,i,arr)=>{
+    const prev=i<arr.length-1?arr[i+1]:null;
+    const diff=prev?h.val-prev.val:0;
+    const diffPct=prev&&prev.val>0?(diff/prev.val)*100:0;
+    const cls=diff>0.01?'up':diff<-0.01?'down':'neutral';
+    const chgTxt=prev?(diff>=0?'+':'')+fmtEur(diff)+' ('+(diffPct>=0?'+':'')+fmtNum(diffPct,2)+'%)':'primer registro';
+    return`<li class="hist-item"><div><div class="hist-fecha">${fmtFecha(h.fecha)}</div><div class="hist-chg ${cls}">${chgTxt}</div></div><div style="display:flex;align-items:center;gap:8px"><div class="hist-val">${fmtEur(h.val)}</div><button class="hist-del" onclick="borrarSnapshot('${h.fecha}')">✕</button></div></li>`;
+  }).join('');
+}
+
+// ── GRÁFICA INTERACTIVA (Lightweight Charts) ──
+// Valor frente a dinero aportado, rentabilidad real sin aportaciones y caídas desde máximos,
+// para Fondo, Bitcoin o Total (sigue al selector de arriba). Pantalla completa en horizontal.
+const Grafica=(function(){
+  const C={laton:'#B38D35',latonClaro:'#D7B666',pervinca:'#6C82E8',tinta:'#ECE6D8',gris:'#8DA3A1',sube:'#6FCF97',baja:'#EB7A7A',capa:'#14272C'};
+  const APORT=300;
+  // Punto de inicio de la gráfica: se guarda solo en el móvil (clave 'puntoOrigen')
+  const origen=()=>{try{const o=JSON.parse(localStorage.getItem('puntoOrigen')||'null');return o&&o.fecha&&o.val>0?o:null;}catch(e){return null;}};
+  const inicioHist=()=>{const o=origen();if(o)return o.fecha;const h=cargarHistorial();return h.length?h.map(x=>x.fecha).sort()[0]:iso(new Date());};
+  const APORT_CONOCIDAS={'2026-05':'2026-05-05','2026-06':'2026-06-03','2026-07':'2026-07-06'};
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const eur=(n,d=0)=>n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:'always'})+' €';
+  const pct=(n,d=2)=>(n>=0?'+':'−')+Math.abs(n).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d})+' %';
+  const firm=(n,d=0)=>(n>=0?'+':'−')+eur(Math.abs(n),d);
+  const fFecha=s=>new Date(s+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+  const fCorta=s=>new Date(s+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  const signo=n=>n>0.005?'sube':n<-0.005?'baja':'';
+  const $=id=>document.getElementById(id);
+  let chart=null,sV=null,sA=null,sP=null,sD=null,S=[],AN=[],kl=[],aportes=[],sinBtc=false;
+  const est={m:'eur',r:'all',medir:false,A:null,clave:''};
+  let cargandoKl=false, ultimoKl=0;
+
+  function activo(){ return (typeof assetView!=='undefined'&&assetView)||'fondo'; }
+  function fechasAportacion(hasta){
+    const r=[]; let d=new Date(2026,4,1);
+    while(iso(d)<=hasta){
+      const k=iso(d).slice(0,7); let f=APORT_CONOCIDAS[k];
+      if(!f){const x=new Date(d.getFullYear(),d.getMonth(),3);while(x.getDay()===0||x.getDay()===6)x.setDate(x.getDate()+1);f=iso(x);}
+      if(f<=hasta) r.push(f); d=new Date(d.getFullYear(),d.getMonth()+1,1);
+    }
+    return r;
+  }
+  function cargarKlines(){
+    try{const c=JSON.parse(localStorage.getItem('btcHistDiario')||'null'); if(c&&c.d) kl=c.d; if(c&&Date.now()-c.ts<3600e3) return;}catch(e){}
+    if(cargandoKl || Date.now()-ultimoKl<10*60e3) return; // un intento cada 10 min como mucho
+    cargandoKl=true; ultimoKl=Date.now();
+    fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCEUR&interval=1d&limit=1000&startTime='+Date.parse(inicioHist()+'T00:00:00Z'))
+      .then(r=>r.json()).then(k=>{ if(!Array.isArray(k)) return; kl=k.map(x=>({time:iso(new Date(x[0])),close:+x[4]}));
+        try{localStorage.setItem('btcHistDiario',JSON.stringify({ts:Date.now(),d:kl}))}catch(e){} est.clave=''; render(); })
+      .catch(()=>{}).finally(()=>{cargandoKl=false;});
+  }
+  // Serie del activo: [{time,value,aportado,est}]
+  function serie(a){
+    const hoy=iso(new Date());
+    const coste=parseFloat($('coste-total').value)||0, btcCant=parseFloat($('btc-cantidad').value)||0, btcCoste=parseFloat($('btc-coste').value)||0;
+    const aportadoF=f=>coste-APORT*aportes.filter(x=>x>f).length;
+    const o=origen(); const hist=[...(o?[o]:[]),...cargarHistorial().filter(h=>!o||h.fecha!==o.fecha)].sort((x,y)=>x.fecha<y.fecha?-1:1);
+    const fondo=hist.map(h=>({time:h.fecha,value:h.val}));
+    if(valActual>0 && !fondo.find(p=>p.time===hoy)) fondo.push({time:hoy,value:valActual,est:true});
+    const btcHoy=(btcState&&btcState.precio>0)?btcState.precio*btcCant:null;
+    const btcEn=t=>{let u=null;for(const k of kl){if(k.time<=t)u=k.close*btcCant;else break;}return u;};
+    if(a==='fondo') return fondo.map(p=>({...p,aportado:aportadoF(p.time)}));
+    if(a==='btc'){
+      const s=kl.map(k=>({time:k.time,value:k.close*btcCant,aportado:btcCoste}));
+      if(btcHoy){const i=s.findIndex(p=>p.time===hoy); if(i>=0)s[i].value=btcHoy; else s.push({time:hoy,value:btcHoy,aportado:btcCoste,est:true});}
+      return s;
+    }
+    return fondo.map(p=>{const b=(p.est&&btcHoy)?btcHoy:btcEn(p.time);return b==null?null:{time:p.time,value:p.value+b,aportado:aportadoF(p.time)+btcCoste,est:p.est};}).filter(Boolean);
+  }
+  function analizar(s){
+    let idx=100,max=100; const out=[];
+    s.forEach((p,i)=>{
+      if(i>0){const flujo=p.aportado-s[i-1].aportado, r=(p.value-flujo)/s[i-1].value; if(isFinite(r)&&r>0) idx*=r;}
+      max=Math.max(max,idx); out.push({time:p.time,idx,dd:(idx/max-1)*100,dia:0});
+    });
+    for(let i=1;i<out.length;i++) out[i].dia=(out[i].idx/out[i-1].idx-1)*100;
+    return out;
+  }
+  function color(a){return a==='btc'?C.pervinca:a==='fondo'?C.laton:C.tinta;}
+  function crear(){
+    if(chart||!window.LightweightCharts) return !!chart;
+    const L=window.LightweightCharts;
+    chart=L.createChart($('g-lienzo'),{
+      autoSize:true,
+      layout:{background:{type:'solid',color:'transparent'},textColor:C.gris,fontFamily:"'Hanken Grotesk',system-ui,sans-serif",fontSize:11,attributionLogo:false},
+      grid:{vertLines:{visible:false},horzLines:{color:'rgba(36,64,63,.55)'}},
+      rightPriceScale:{borderVisible:false,scaleMargins:{top:.12,bottom:.08}},
+      timeScale:{borderVisible:false,fixLeftEdge:true,fixRightEdge:true,rightOffset:2,minBarSpacing:2},
+      crosshair:{mode:L.CrosshairMode.Magnet,vertLine:{color:'rgba(236,230,216,.35)',width:1,style:L.LineStyle.Solid,labelBackgroundColor:C.capa},horzLine:{color:'rgba(236,230,216,.18)',width:1,labelBackgroundColor:C.capa}},
+      localization:{locale:'es-ES',priceFormatter:v=>est.m==='eur'?Math.round(v).toLocaleString('es-ES',{useGrouping:'always'})+' €':v.toLocaleString('es-ES',{maximumFractionDigits:1})+' %'},
+      handleScroll:{vertTouchDrag:false}, handleScale:{axisPressedMouseMove:false},
+    });
+    chart.subscribeCrosshairMove(p=>leer(p&&p.time?p.time:null));
+    chart.subscribeClick(p=>{if(est.medir&&p&&p.time) medir(p.time);});
+    // (rango lógico: la versión por fechas de la librería falla cuando la gráfica se queda sin datos un instante)
+    chart.timeScale().subscribeVisibleLogicalRangeChange(()=>estadisticas());
+    return true;
+  }
+  function render(){
+    if(!$('g-lienzo')) return;
+    if(!kl.length) cargarKlines();
+    if(!crear()){ $('g-sinlib').hidden=false; return; }
+    const a=activo(); aportes=fechasAportacion(iso(new Date()));
+    let s=serie(a); sinBtc=false;
+    if(s.length<2&&a!=='fondo'){ s=serie('fondo'); sinBtc=true; }
+    S=s; AN=analizar(S); $('g-sinbtc').hidden=!sinBtc;
+    const clave=a+'|'+est.m+'|'+(sinBtc?1:0)+'|'+document.getElementById('grafica').classList.contains('completa');
+    const nueva=clave!==est.clave;
+    if(nueva){ [sV,sA,sP,sD].forEach(x=>{if(x)chart.removeSeries(x)}); sV=sA=sP=sD=null; est.clave=clave; }
+    const L=window.LightweightCharts, col=color(sinBtc?'fondo':a), grande=$('grafica').classList.contains('completa');
+    if(est.m==='eur'){
+      if(!sV){
+        sV=chart.addAreaSeries({lineColor:col,lineWidth:2,topColor:col+'40',bottomColor:col+'00',priceLineVisible:false,crosshairMarkerRadius:5,crosshairMarkerBorderColor:'#0E1B1F',crosshairMarkerBorderWidth:2});
+        sA=chart.addLineSeries({color:C.gris,lineWidth:1.5,lineStyle:L.LineStyle.Dashed,lineType:L.LineType.WithSteps,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      }
+      sV.setData(S.map(p=>({time:p.time,value:p.value}))); sA.setData(S.map(p=>({time:p.time,value:p.aportado})));
+      const m=[];
+      if(a!=='btc'||sinBtc) aportes.forEach(f=>{const p=S.find(x=>x.time>=f);if(p)m.push({time:p.time,position:'belowBar',color:C.gris,shape:'circle',size:0.6,text:grande?'+300 €':''});});
+      const im=AN.reduce((mx,p,i)=>p.idx>AN[mx].idx?i:mx,0);
+      if(AN.length>3) m.push({time:AN[im].time,position:'aboveBar',color:C.latonClaro,shape:'arrowDown',size:0.8,text:im>=AN.length-3?'':'máximo'});
+      m.sort((x,y)=>x.time<y.time?-1:1); sV.setMarkers(m);
+    } else if(est.m==='pct'){
+      if(!sP) sP=chart.addBaselineSeries({baseValue:{type:'price',price:0},topLineColor:C.sube,topFillColor1:'rgba(111,207,151,.22)',topFillColor2:'rgba(111,207,151,0)',bottomLineColor:C.baja,bottomFillColor1:'rgba(235,122,122,0)',bottomFillColor2:'rgba(235,122,122,.22)',lineWidth:2,priceLineVisible:false});
+      sP.setData(AN.map(p=>({time:p.time,value:p.idx-100})));
+    } else {
+      if(!sD) sD=chart.addAreaSeries({lineColor:C.baja,lineWidth:2,topColor:'rgba(235,122,122,0)',bottomColor:'rgba(235,122,122,.28)',invertFilledArea:true,priceLineVisible:false});
+      sD.setData(AN.map(p=>({time:p.time,value:p.dd})));
+    }
+    leyenda(a); if(nueva) rango(est.r); leer(null); claves(a); estadisticas();
+  }
+  function leyenda(a){
+    const n=sinBtc?'fondo':a;
+    $('g-leyenda').innerHTML= est.m==='eur'
+      ? `<span><i class="g-tr" style="border-color:${color(n)}"></i>${n==='total'?'Valor total':n==='btc'?'Valor del Bitcoin':'Valor del fondo'}</span><span><i class="g-tr g-disc"></i>Dinero aportado</span>`
+      : est.m==='pct' ? '<span>Lo que ha ganado tu dinero, sin contar lo que has ido aportando</span>' : '<span>Cuánto estás por debajo del máximo alcanzado</span>';
+  }
+  function rango(r){
+    est.r=r; document.querySelectorAll('#g-chips button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.r==String(r)));
+    if(!chart||!S.length) return; const u=S[S.length-1].time;
+    if(r==='all'){chart.timeScale().fitContent();return;}
+    let d=new Date(u+'T12:00:00'); if(r==='ytd') d=new Date(d.getFullYear(),0,1); else d.setDate(d.getDate()-(+r));
+    let desde=iso(d); if(desde<S[0].time) desde=S[0].time;
+    try{chart.timeScale().setVisibleRange({from:desde,to:u});}catch(e){chart.timeScale().fitContent();}
+  }
+  function punto(t){const i=S.findIndex(p=>p.time===t);return i<0?null:{p:S[i],a:AN[i],i};}
+  function leer(t){
+    const x=punto(t||(S.length?S[S.length-1].time:null)); if(!x) return; const {p,a,i}=x;
+    $('g-fecha').textContent=fFecha(p.time)+(p.est?' (estimado)':'')+(t?'':', último dato');
+    if(est.m==='eur'){
+      $('g-valor').textContent=eur(p.value); const g=p.value-p.aportado;
+      $('g-delta').innerHTML= p.aportado>0
+        ? `<span class="${signo(g)}">${firm(g)} (${pct(g/p.aportado*100)})</span> <span class="g-gris">sobre ${eur(p.aportado)} aportados</span>`
+        : '<span class="g-gris">Sin datos de lo aportado en este móvil</span>';
+    } else if(est.m==='pct'){
+      $('g-valor').textContent=pct(a.idx-100); $('g-delta').innerHTML=i>0?`<span class="${signo(a.dia)}">${pct(a.dia)}</span> <span class="g-gris">respecto al dato anterior</span>`:'';
+    } else { $('g-valor').textContent=a.dd>-0.005?'En máximos':pct(a.dd); $('g-delta').innerHTML='<span class="g-gris">desde el máximo anterior</span>'; }
+  }
+  function medir(t){
+    const M=$('g-medida');
+    if(!est.A){est.A=t;M.textContent='Inicio: '+fCorta(t)+'. Toca la fecha final.';return;}
+    const [a,b]=[est.A,t].sort(), pa=punto(a), pb=punto(b); est.A=null; if(!pa||!pb) return;
+    const dv=pb.p.value-pa.p.value, ap=pb.p.aportado-pa.p.aportado, g=dv-ap, r=(pb.a.idx/pa.a.idx-1)*100;
+    M.innerHTML=`<b>${fCorta(a)} → ${fCorta(b)}</b>: el valor cambia ${firm(dv)}${ap?`, de los que ${eur(ap)} son aportaciones`:''}. Ganancia real <span class="${signo(g)}">${firm(g)}</span>, rentabilidad <span class="${signo(r)}">${pct(r)}</span>. Toca otra fecha para medir de nuevo.`;
+  }
+  function estadisticas(){
+    if(!chart||!S.length) return; let vr=null; try{vr=chart.timeScale().getVisibleRange();}catch(e){} if(!vr) return; // sin datos aún
+    const ix=S.map((p,i)=>i).filter(i=>S[i].time>=vr.from&&S[i].time<=vr.to); if(ix.length<2) return;
+    const i0=ix[0],i1=ix[ix.length-1], r=(AN[i1].idx/AN[i0].idx-1)*100, g=(S[i1].value-S[i0].value)-(S[i1].aportado-S[i0].aportado);
+    let mx=AN[i0].idx,dd=0,mej=null,peo=null,pos=0,n=0;
+    ix.forEach(i=>{mx=Math.max(mx,AN[i].idx);dd=Math.min(dd,(AN[i].idx/mx-1)*100);if(i>i0){n++;const d=AN[i].dia;if(d>0)pos++;if(!mej||d>mej.d)mej={d,t:S[i].time};if(!peo||d<peo.d)peo={d,t:S[i].time};}});
+    $('g-lat-tit').textContent=fCorta(S[i0].time)+' a '+fCorta(S[i1].time);
+    $('g-lat-stats').innerHTML=`<dt>Ganancia real</dt><dd class="${signo(g)}">${firm(g)}</dd><dt>Rentabilidad</dt><dd class="${signo(r)}">${pct(r)}</dd>
+      <dt>Mayor caída</dt><dd class="${dd<-0.005?'baja':''}">${dd<-0.005?pct(dd):'Ninguna'}</dd>
+      <dt>Mejor salto</dt><dd>${mej?pct(mej.d)+', '+fCorta(mej.t):'—'}</dd><dt>Peor salto</dt><dd>${peo?pct(peo.d)+', '+fCorta(peo.t):'—'}</dd>
+      <dt>Subidas</dt><dd>${n?pos+' de '+n:'—'}</dd>`;
+  }
+  function claves(a){
+    if(!S.length) return; const u=S[S.length-1], g=u.value-u.aportado;
+    let dd=0,mx=0; AN.forEach(p=>{mx=Math.max(mx,p.idx);dd=Math.min(dd,(p.idx/mx-1)*100)});
+    const dias=(new Date(u.time)-new Date(S[0].time))/864e5, r=AN[AN.length-1].idx/100, anual=dias>60?(Math.pow(r,365/dias)-1)*100:null;
+    $('g-claves').innerHTML=`
+      <div class="g-clave"><div class="t">Dinero aportado</div><div class="v">${eur(u.aportado)}</div><div class="s">${a==='btc'&&!sinBtc?'Coste de compra':'Incluye las aportaciones mensuales'}</div></div>
+      <div class="g-clave"><div class="t">Ganancia</div><div class="v ${signo(g)}">${firm(g)}</div><div class="s">${u.aportado>0?pct(g/u.aportado*100)+' sobre lo aportado':'Sin datos de lo aportado'}</div></div>
+      <div class="g-clave"><div class="t">Rentabilidad real</div><div class="v ${signo(r*100-100)}">${pct(r*100-100)}</div><div class="s">${anual!=null?pct(anual,1)+' al año a este ritmo':'Desde el '+fCorta(S[0].time)}</div></div>
+      <div class="g-clave"><div class="t">Mayor caída</div><div class="v ${dd<-0.005?'baja':''}">${dd<-0.005?pct(dd):'Ninguna'}</div><div class="s">Desde un máximo, en todo el periodo</div></div>`;
+    document.querySelectorAll('#g-lat-modos input').forEach(i=>i.checked=i.value===est.m);
+  }
+  function modo(m){ est.m=m; document.querySelectorAll('#g-modos button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m)); render(); }
+  async function completa(on){
+    const g=$('grafica');
+    if(on){
+      g.classList.add('completa'); document.body.classList.add('g-bloqueo');
+      try{ if(g.requestFullscreen) await g.requestFullscreen({navigationUI:'hide'}); }catch(e){}
+      try{ await screen.orientation.lock('landscape'); }catch(e){}
+    } else {
+      try{ screen.orientation.unlock(); }catch(e){}
+      if(document.fullscreenElement) try{ await document.exitFullscreen(); }catch(e){}
+      g.classList.remove('completa'); document.body.classList.remove('g-bloqueo');
+    }
+    setTimeout(()=>{est.clave='';render();},250);
+  }
+  function colocar(){
+    const mc=document.querySelector('#view-'+activo()+' .main-card'), g=$('grafica'), k=$('g-claves');
+    if(mc&&g&&mc.nextElementSibling!==g){ mc.after(g); g.after(k); }
+  }
+  function init(){
+    if(!$('grafica')) return;
+    colocar();
+    document.querySelectorAll('#g-modos button').forEach(b=>b.onclick=()=>modo(b.dataset.m));
+    document.querySelectorAll('#g-lat-modos input').forEach(i=>i.onchange=()=>modo(i.value));
+    document.querySelectorAll('#g-chips button').forEach(b=>b.onclick=()=>rango(b.dataset.r==='all'||b.dataset.r==='ytd'?b.dataset.r:+b.dataset.r));
+    $('g-completa').onclick=()=>completa(!$('grafica').classList.contains('completa'));
+    $('g-salir').onclick=()=>completa(false);
+    $('g-lienzo').addEventListener('dblclick',()=>{if(!est.medir)completa(true);});
+    $('g-medir').onclick=e=>{est.medir=!est.medir;est.A=null;e.currentTarget.setAttribute('aria-pressed',est.medir);const M=$('g-medida');M.hidden=!est.medir;M.textContent='Toca la fecha de inicio en la gráfica.';};
+    document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&$('grafica').classList.contains('completa')){$('grafica').classList.remove('completa');document.body.classList.remove('g-bloqueo');est.clave='';setTimeout(render,150);}});
+    render();
+  }
+  // Repintado ligero: como mucho una vez cada 2 s (los precios cambian cada 15 s)
+  let pend=null; function pedir(){ if(pend) return; pend=setTimeout(()=>{pend=null;render();},2000); }
+  return {init,render,pedir,colocar};
+})();
+
+function renderGrafica(){ Grafica.render(); }
+
+function toggleSection(id){
+  const body=document.getElementById('body-'+id);const arrow=document.getElementById('arrow-'+id);
+  const isOpen=!body.classList.contains('collapsed');
+  body.classList.toggle('collapsed',isOpen);arrow.classList.toggle('open',!isOpen);
+}
+function initSliders(){
+  ['sp-adj','fx-adj'].forEach(id=>{
+    const el=document.getElementById(id);
+    const pct=((parseFloat(el.value)-parseFloat(el.min))/(parseFloat(el.max)-parseFloat(el.min)))*100;
+    el.style.setProperty('--pct',pct+'%');
+  });
+}
+
+
+
+
+
+// ── RESETEAR SOLO VARIACIÓN DE MERCADO ──
+function resetearVariacion(){
+  state = {spPct:0, fxPct:0, spPrice:null, fxPrice:null, fecha:null};
+  localStorage.removeItem('marketData');
+  document.getElementById('sp-price').textContent='—';
+  document.getElementById('sp-chg').textContent='—';
+  document.getElementById('sp-chg').className='stat-chg neutral';
+  document.getElementById('fx-price').textContent='—';
+  document.getElementById('fx-chg').textContent='—';
+  document.getElementById('fx-chg').className='stat-chg neutral';
+  document.getElementById('sp-adj').value=0;
+  document.getElementById('fx-adj').value=0;
+  onSlider(document.getElementById('sp-adj'),'sp-adj-val');
+  onSlider(document.getElementById('fx-adj'),'fx-adj-val');
+  setStatus('','Variación reseteada · actualiza tras el cierre');
+  calcular();
+  toast('↺ Variación reseteada a cero');
+}
+
+
+// ── APORTACIÓN EXTRAORDINARIA ──
+function confirmarExtPaso1(){
+  const importe = parseFloat(document.getElementById('ext-importe').value) || 0;
+  if(importe <= 0){ toast('Introduce un importe válido'); return; }
+  // Sumar al coste total
+  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
+  document.getElementById('coste-total').value = costeActual + importe;
+  guardarPosicion();
+  calcular();
+  document.getElementById('modal-ext1').classList.add('hidden');
+  document.getElementById('ext-partic').value = '';
+  document.getElementById('ext-nav').value = '';
+  document.getElementById('modal-ext2').classList.remove('hidden');
+  toast('✦ +'+fmtEur(importe)+' sumado al coste total');
+}
+
+function confirmarExtPaso2(){
+  const partic = document.getElementById('ext-partic').value;
+  const nav = document.getElementById('ext-nav').value;
+  if(partic && parseFloat(partic) > 0) document.getElementById('partic').value = partic;
+  if(nav && parseFloat(nav) > 0) document.getElementById('nav-base').value = nav;
+  guardarPosicion();
+  calcular();
+  localStorage.removeItem('extDatosPendientes');
+  document.getElementById('modal-ext2').classList.add('hidden');
+  toast('✦ Aportación extraordinaria registrada');
+}
+
+function aplazarExtPaso2(){
+  localStorage.setItem('extDatosPendientes','true');
+  document.getElementById('modal-ext2').classList.add('hidden');
+  toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme');
+}
+
+
+// ── PROYECCIÓN A FUTURO ──
+let projChart = null;
+
+function onSliderProjCapital(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toLocaleString('es-ES') + ' €';
+}
+
+function onSliderProj(el, outId, suffix){
+  const v = parseFloat(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toFixed(1) + suffix;
+}
+function onSliderProjAnos(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v + ' años';
+}
+function onSliderProjEur(el, outId){
+  const v = parseInt(el.value);
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById(outId).textContent = v.toLocaleString('es-ES') + ' €';
+}
+
+function calcProyeccion(){
+  const rentAnual = parseFloat(document.getElementById('proj-rent').value) / 100;
+  const anos = parseInt(document.getElementById('proj-anos').value);
+  const apMensual = parseFloat(document.getElementById('proj-ap').value);
+  const capitalInicial = parseFloat(document.getElementById('proj-cap').value) || 0;
+  const costoInicial = capitalInicial;
+
+  const rentMensual = Math.pow(1 + rentAnual, 1/12) - 1;
+  const meses = anos * 12;
+
+  const labelsAnos = [];
+  const datosTotal = [];
+  const datosInvertido = [];
+  const datosAportaciones = [];
+
+  for(let a = 0; a <= anos; a++){
+    const m = a * 12;
+    const capitalCrecido = capitalInicial * Math.pow(1 + rentMensual, m);
+    const aportacionesFuturo = apMensual * ((Math.pow(1 + rentMensual, m) - 1) / rentMensual);
+    const totalAportado = costoInicial + apMensual * m;
+    const total = capitalCrecido + aportacionesFuturo;
+
+    labelsAnos.push(a === 0 ? 'Hoy' : '+' + a + 'a');
+    datosTotal.push(Math.round(total));
+    datosInvertido.push(Math.round(totalAportado));
+    datosAportaciones.push(Math.round(aportacionesFuturo));
+  }
+
+  const totalFinal = datosTotal[datosTotal.length - 1];
+  const invertidoFinal = datosInvertido[datosInvertido.length - 1];
+  const rentaFinal = totalFinal - invertidoFinal;
+  const pctFinal = ((totalFinal - invertidoFinal) / invertidoFinal) * 100;
+  const mult = totalFinal / costoInicial;
+
+  document.getElementById('proj-total').textContent = totalFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-total-sub').textContent = 'en ' + anos + ' años · ' + (rentAnual*100).toFixed(1) + '% anual';
+  document.getElementById('proj-invertido').textContent = invertidoFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-renta').textContent = '+' + rentaFinal.toLocaleString('es-ES') + ' €';
+  document.getElementById('proj-mult').textContent = mult.toFixed(1) + 'x';
+  document.getElementById('proj-pct').textContent = '+' + pctFinal.toFixed(0) + '%';
+
+  // Filtrar para no mostrar demasiados puntos
+  const paso = anos <= 10 ? 1 : anos <= 20 ? 2 : 5;
+  const lFilt = labelsAnos.filter((_,i) => i % paso === 0);
+  const tFilt = datosTotal.filter((_,i) => i % paso === 0);
+  const iFilt = datosInvertido.filter((_,i) => i % paso === 0);
+  const aFilt = datosAportaciones.filter((_,i) => i % paso === 0);
+
+  if(projChart) projChart.destroy();
+  const ctx = document.getElementById('proj-chart');
+  projChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: lFilt,
+      datasets: [
+        {
+          label: 'Capital total',
+          data: tFilt,
+          borderColor: '#6FCF97',
+          backgroundColor: 'rgba(111,207,151,0.08)',
+          borderWidth: 2.5,
+          pointRadius: anos <= 15 ? 4 : 2,
+          pointBackgroundColor: '#6FCF97',
+          fill: true,
+          tension: 0.4,
+          order: 1
+        },
+        {
+          label: 'Aportaciones acumuladas',
+          data: aFilt,
+          borderColor: '#B38D35',
+          backgroundColor: 'rgba(179,141,53,0.06)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.4,
+          order: 2
+        },
+        {
+          label: 'Total invertido',
+          data: iFilt,
+          borderColor: '#D7B666',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17,17,24,0.95)',
+          titleColor: '#f0f0f5',
+          bodyColor: '#8888a0',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString('es-ES') + ' €'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#55556a', font: { size: 10 }, maxTicksLimit: 8 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#55556a',
+            font: { size: 10 },
+            callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M €' : (v/1000).toFixed(0)+'k €'
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── RESET COMPLETO ──
+function resetPaso2(){
+  document.getElementById('modal-reset1').classList.add('hidden');
+  document.getElementById('confirm-input').value='';
+  document.getElementById('btn-confirm-reset').disabled=true;
+  document.getElementById('btn-confirm-reset').style.opacity='0.4';
+  document.getElementById('btn-confirm-reset').style.cursor='not-allowed';
+  document.getElementById('modal-reset2').classList.remove('hidden');
+}
+function checkConfirm(){
+  const val=document.getElementById('confirm-input').value.trim().toUpperCase();
+  const btn=document.getElementById('btn-confirm-reset');
+  if(val==='BORRAR'){
+    btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';
+  } else {
+    btn.disabled=true;btn.style.opacity='0.4';btn.style.cursor='not-allowed';
+  }
+}
+function cancelarReset(){
+  document.getElementById('modal-reset2').classList.add('hidden');
+  document.getElementById('confirm-input').value='';
+}
+function ejecutarReset(){
+  localStorage.clear();
+  document.getElementById('modal-reset2').classList.add('hidden');
+  toast('✓ Datos borrados. Reiniciando...');
+  setTimeout(()=>location.reload(), 1200);
+}
+
+// ── COPIA DE SEGURIDAD ──
+function construirBackup(){
+  return {
+    version: 2,
+    fecha: new Date().toISOString(),
+    posicion: {
+      partic: localStorage.getItem('partic'),
+      navBase: localStorage.getItem('navBase'),
+      costeTotal: localStorage.getItem('costeTotal'),
+      navFecha: localStorage.getItem('navFecha')
+    },
+    bitcoin: {
+      btcCantidad: localStorage.getItem('btcCantidad'),
+      btcCoste: localStorage.getItem('btcCoste'),
+      btcData: localStorage.getItem('btcData') || ''
+    },
+    historial: cargarHistorial(),
+    ultimaAportacion: localStorage.getItem('ultimaAportacion') || '',
+    marketData: localStorage.getItem('marketData') || '',
+    btcLotes: btcLotes(),
+    puntoOrigen: localStorage.getItem('puntoOrigen') || ''
+  };
+}
+function exportarDatos(){
+  const datos = construirBackup();
+  const json = JSON.stringify(datos, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const hoy = new Date().toISOString().split('T')[0];
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mifondo-backup-'+hoy+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Datos exportados correctamente');
+}
+
+function importarDatos(event){
+  const file = event.target.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      aplicarBackup(JSON.parse(e.target.result));
+      toast('✓ Datos restaurados correctamente');
+    } catch(err){
+      toast('⚠ Error al importar: archivo no válido');
+      console.error(err);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+function aplicarBackup(datos){
+      if(!datos || !datos.version || !datos.posicion) throw new Error('Formato incorrecto');
+
+      // Restaurar posición
+      if(datos.posicion.partic) localStorage.setItem('partic', datos.posicion.partic);
+      if(datos.posicion.navBase) localStorage.setItem('navBase', datos.posicion.navBase);
+      if(datos.posicion.navFecha) localStorage.setItem('navFecha', datos.posicion.navFecha); else localStorage.removeItem('navFecha');
+      if(datos.posicion.costeTotal) localStorage.setItem('costeTotal', datos.posicion.costeTotal);
+
+      // Restaurar Bitcoin (solo backups v2+; los v1 no lo traen y se conserva lo que haya)
+      if(datos.bitcoin){
+        if(datos.bitcoin.btcCantidad) localStorage.setItem('btcCantidad', datos.bitcoin.btcCantidad);
+        if(datos.bitcoin.btcCoste) localStorage.setItem('btcCoste', datos.bitcoin.btcCoste);
+        if(datos.bitcoin.btcData) localStorage.setItem('btcData', datos.bitcoin.btcData);
+      }
+
+      // Restaurar historial
+      if(datos.historial && Array.isArray(datos.historial)){
+        guardarHistorial(datos.historial);
+      }
+
+      // Restaurar aportación
+      if(datos.ultimaAportacion) localStorage.setItem('ultimaAportacion', datos.ultimaAportacion);
+
+      // Restaurar lotes de BTC y punto de inicio de la gráfica (si la copia los trae)
+      if(Array.isArray(datos.btcLotes) && datos.btcLotes.length) localStorage.setItem('btcLotes', JSON.stringify(datos.btcLotes));
+      if(datos.puntoOrigen) localStorage.setItem('puntoOrigen', datos.puntoOrigen);
+
+      // Restaurar market data
+      if(datos.marketData) localStorage.setItem('marketData', datos.marketData);
+
+      // Recargar interfaz
+      cargarPosicion();
+      cargarBtcPosicion();
+      cargarDatosCache();
+      cargarBtcCache();
+      calcular();
+      calcularBtc();
+      calcularTotal();
+      renderHistorial();
+      renderGrafica();
+}
+
+// ── APORTACIÓN MENSUAL ──
+const APORTACION_DIA = 3;
+const APORTACION_EUR = 300;
+
+function comprobarAportacion(){
+  if(typeof Sync!=='undefined' && Sync.esLector()) return; // en el móvil lector, la aportación la registra el editor
+  const hoy = new Date();
+  const diaHoy = hoy.getDate();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  const ultimaAportacion = localStorage.getItem('ultimaAportacion') || '';
+  const pospuesta = localStorage.getItem('aportacionPospuesta') || '';
+  const hoyIso = isoLocal(hoy);
+  if(ultimaAportacion === mesAnyo) return;
+  if(diaHoy >= APORTACION_DIA && pospuesta !== hoyIso){
+    const diasTarde = diaHoy - APORTACION_DIA;
+    const sub = diasTarde === 0
+      ? 'Es día 3 del mes. ¿Has realizado tu aportación periódica de '+APORTACION_EUR+' €?'
+      : 'El día 3 de este mes no abriste la app. ¿Has realizado ya tu aportación periódica de '+APORTACION_EUR+' €?';
+    document.getElementById('modal-sub').textContent = sub;
+    const coste = parseFloat(document.getElementById('coste-total').value) || 0;
+    document.getElementById('modal-ap-coste').textContent =
+      'Coste del fondo: '+fmtEur(coste)+' → '+fmtEur(coste+APORTACION_EUR)+'. Bitcoin no se toca.';
+    document.getElementById('modal-aportacion').classList.remove('hidden');
+  }
+}
+
+function confirmarAportacionPaso1(){
+  // Sumar 300€ al coste total
+  const costeActual = parseFloat(document.getElementById('coste-total').value) || 0;
+  document.getElementById('coste-total').value = costeActual + APORTACION_EUR;
+  guardarPosicion();
+  calcular();
+  const hoy = new Date();
+  localStorage.setItem('ultimaAportacion', hoy.getFullYear()+'-'+(hoy.getMonth()+1));
+  localStorage.setItem('aportacionDatosPendientes', 'true'); // hasta guardar participaciones y NAV
+  localStorage.removeItem('aportacionPospuesta');
+  // Cerrar paso 1 y abrir paso 2
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  document.getElementById('ap-partic').value = '';
+  document.getElementById('ap-nav').value = '';
+  document.getElementById('modal-aportacion2').classList.remove('hidden');
+}
+
+function confirmarAportacionPaso2(){
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  const partic = document.getElementById('ap-partic').value;
+  const nav = document.getElementById('ap-nav').value;
+  if(partic && parseFloat(partic) > 0){
+    document.getElementById('partic').value = partic;
+  }
+  if(nav && parseFloat(nav) > 0){
+    document.getElementById('nav-base').value = nav;
+  }
+  guardarPosicion();
+  calcular();
+  localStorage.setItem('ultimaAportacion', mesAnyo);
+  localStorage.removeItem('aportacionPospuesta');
+  if((partic && parseFloat(partic) > 0) || (nav && parseFloat(nav) > 0)) localStorage.removeItem('aportacionDatosPendientes');
+  document.getElementById('modal-aportacion2').classList.add('hidden');
+  toast('✦ Aportación registrada correctamente');
+}
+
+function aplazarPaso2(){
+  // Cierra el modal pero marca la aportación como pendiente de datos
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  localStorage.setItem('ultimaAportacion', mesAnyo);
+  localStorage.setItem('aportacionDatosPendientes', 'true');
+  document.getElementById('modal-aportacion2').classList.add('hidden');
+  toast('Recuerda actualizar participaciones y NAV cuando Renta 4 confirme');
+}
+
+function posponerAportacion(){
+  const hoy = new Date();
+  const mesAnyo = hoy.getFullYear()+'-'+(hoy.getMonth()+1);
+  localStorage.setItem('aportacionPospuesta', isoLocal(hoy));
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  toast('Te preguntaré de nuevo mañana');
+}
+
+function aportacionYaContada(){
+  // El coste ya incluye la aportación (p. ej. llegó con un enlace de Renta 4): no sumar nada
+  const hoy = new Date();
+  localStorage.setItem('ultimaAportacion', hoy.getFullYear()+'-'+(hoy.getMonth()+1));
+  localStorage.removeItem('aportacionPospuesta');
+  document.getElementById('modal-aportacion').classList.add('hidden');
+  toast('✓ Marcada como registrada · coste sin cambios');
+}
+
+
+// ── NAV OFICIAL DESDE RENTA 4 (sin captura ni enlace) ──
+// ── LECTURA DE CAPTURA DE RENTA 4 (texto OCR → datos) ──
+function parsearCapturaR4(texto){
+  const t=String(texto||'').replace(/\r/g,'').replace(/[\u2212\u2013](?=\d)/g,'-');
+  const num=s=>parseFloat(s.replace(/\./g,'').replace(',','.'));
+  const N2='(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2})';
+  const etiqueta=re=>{const m=t.match(re);return m?num(m[1]):null;};
+  let val=etiqueta(new RegExp('Valoraci\\S*\\W*'+N2,'i'));
+  if(val===null) val=etiqueta(new RegExp('\\bVal\\s*:\\s*'+N2,'i'));
+  let partic=etiqueta(new RegExp('Partic\\S*\\W*'+N2,'i'));
+  const plus=etiqueta(new RegExp('Plus\\s*Fin\\s*:?\\s*'+N2,'i'));
+  // Candidatos a NAV: números con 3 o 4 decimales
+  const navs=[...t.matchAll(/(?<![\d.,])(\d{1,3}(?:\.\d{3})*,\d{3,4})(?!\d)/g)].map(m=>num(m[1]));
+  const dos=[...t.matchAll(/(?<![\d.,])(\d{1,3}(?:\.\d{3})*,\d{2})(?!\d)/g)].map(m=>num(m[1]));
+  // Renta 4 muestra las participaciones con 2 decimales: se admite hasta 0,5 € de diferencia
+  const TOL=0.5;
+  let mejor=null;
+  const probar=(p,n,v)=>{ if(!(p>0&&n>0&&v>0)) return; const e=Math.abs(p*n-v); if(e<=TOL&&(!mejor||e<mejor.e)) mejor={p,n,v,e}; };
+  if(partic!==null && val!==null) navs.forEach(n=>probar(partic,n,val));
+  if(!mejor){ // sin etiquetas fiables: probar todas las combinaciones
+    for(const p of dos) for(const v of dos) if(v>p) for(const n of navs) probar(p,n,v);
+  }
+  if(!mejor) return {ok:false, error:'No encuentro participaciones × valor liquidativo = valoración en la captura', partic, val, plus, navs};
+  const r={ok:true, partic:mejor.p, nav:mejor.n, val:mejor.v, plus, error:mejor.e};
+  if(plus!==null) r.coste=Math.round((mejor.v-plus)*100)/100;
+  return r;
+}
+
+// Lector de texto (OCR) que funciona en el propio móvil: la imagen no sale del dispositivo.
+// Se descarga solo la primera vez (~6 MB) y el navegador lo guarda.
+const OCR_JS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const OCR_LANG='https://cdn.jsdelivr.net/npm/@tesseract.js-data/spa@1.0.0/4.0.0_best_int';
+function cargarScript(src){
+  return new Promise((ok,ko)=>{
+    if(window.Tesseract) return ok();
+    const s=document.createElement('script'); s.src=src; s.onload=()=>ok(); s.onerror=()=>ko(new Error('No se pudo descargar el lector'));
+    document.head.appendChild(s);
+  });
+}
+async function leerCapturaR4(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(file) await procesarCapturaR4(file);
+}
+// Captura compartida desde la galería o la pantalla de captura (menú Compartir de Android)
+async function recogerCapturaCompartida(){
+  if(!('caches' in window)) return;
+  try{
+    const c=await caches.open('compartido');
+    const r=await c.match('captura-compartida');
+    if(!r){ toast('⚠ No ha llegado la captura compartida'); return; }
+    const blob=await r.blob();
+    await c.delete('captura-compartida');
+    const sec=document.getElementById('body-navr4');
+    sec.classList.remove('collapsed'); document.getElementById('arrow-navr4').classList.add('open');
+    sec.parentElement.scrollIntoView({behavior:'smooth',block:'start'});
+    await procesarCapturaR4(blob);
+  }catch(e){ console.error(e); toast('⚠ No se pudo abrir la captura compartida'); }
+}
+async function procesarCapturaR4(file){
+  const info=document.getElementById('r4-info');
+  const btn=document.getElementById('r4-btn-captura');
+  btn.disabled=true; btn.style.opacity='0.6';
+  info.textContent='Preparando el lector…';
+  let worker=null;
+  try{
+    await cargarScript(OCR_JS);
+    worker=await Tesseract.createWorker('spa',1,{
+      langPath:OCR_LANG,
+      logger:m=>{ if(m.status==='recognizing text') info.textContent='Leyendo captura… '+Math.round(m.progress*100)+' %';
+                  else if(m.status && m.status.indexOf('loading')===0) info.textContent='Descargando el lector (solo la primera vez)…'; }
+    });
+    const r=await worker.recognize(file);
+    const d=parsearCapturaR4(r.data.text);
+    if(!d.ok){ info.textContent='⚠ '+d.error+'. Escribe los datos a mano.'; toast('⚠ No he podido leer la captura'); return; }
+    document.getElementById('r4-nav').value=d.nav;
+    document.getElementById('r4-partic').value=d.partic;
+    document.getElementById('r4-coste').value=(d.coste>0)?d.coste:'';
+    document.getElementById('r4-fecha').value=fechaCierreEsperada();
+    info.textContent='✓ Leído: '+fmtNum(d.partic,2)+' part. × '+fmtNum(d.nav,4)+' € = '+fmtEur(d.val)+' (cuadra)'
+      +(d.coste>0?' · coste '+fmtEur(d.coste):'')+'. Revisa la fecha del cierre y pulsa Guardar.';
+    toast('✓ Captura leída · revisa y guarda');
+  }catch(err){
+    console.error(err);
+    info.textContent='⚠ '+(err&&err.message?err.message:'Error al leer la captura')+'. Escribe los datos a mano.';
+  }finally{
+    if(worker){ try{ await worker.terminate(); }catch(e){} }
+    btn.disabled=false; btn.style.opacity='1';
+  }
+}
+
+// En Android intenta abrir la app de Renta 4 (paquete com.r4.renta4, según r4.com).
+// Si Android no deja abrirla desde el navegador, cae en su ficha de Google Play (botón "Abrir").
+// En otros dispositivos sigue abriendo la web.
+function abrirRenta4(ev){
+  if(!/Android/i.test(navigator.userAgent)) return;
+  ev.preventDefault();
+  const play='https://play.google.com/store/apps/details?id=com.r4.renta4';
+  location.href='intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.r4.renta4;S.browser_fallback_url='+encodeURIComponent(play)+';end';
+}
+
+function fechaCierreEsperada(){
+  // Renta 4 publica a mediodía el NAV del día hábil anterior de Wall Street
+  return diaHabilAnterior(isoLocal(new Date()));
+}
+function prepararFormNav(){
+  const f=document.getElementById('r4-fecha');
+  if(!f) return;
+  f.value=fechaCierreEsperada();
+  f.max=isoLocal(new Date());
+  const nav=parseFloat(localStorage.getItem('navBase'))||0;
+  const nf=localStorage.getItem('navFecha');
+  document.getElementById('r4-info').textContent = nav>0
+    ? 'NAV actual en la app: '+fmtNum(nav,4)+' € '+(nf?'del cierre del '+fmtFecha(nf):'(sin fecha)')
+    : 'Aún no hay NAV guardado';
+}
+function guardarNavRenta4(){
+  const nav=parseFloat(document.getElementById('r4-nav').value);
+  const fecha=document.getElementById('r4-fecha').value;
+  const partic=parseFloat(document.getElementById('r4-partic').value);
+  if(!(nav>0)){ toast('Escribe el NAV de Renta 4'); return; }
+  if(!fecha){ toast('Indica la fecha del cierre'); return; }
+  if(fecha>isoLocal(new Date())){ toast('La fecha no puede ser futura'); return; }
+  const [y,m,d]=fecha.split('-').map(Number);
+  if(!diaHabilNY(new Date(y,m-1,d)) && !confirm('El '+fmtFecha(fecha)+' Wall Street no abrió. ¿Guardar igualmente?')) return;
+  const navAnt=parseFloat(localStorage.getItem('navBase'))||0;
+  if(navAnt>0 && Math.abs(nav/navAnt-1)>0.10 &&
+     !confirm('El NAV cambia un '+fmtNum((nav/navAnt-1)*100,1)+' % respecto al actual ('+fmtNum(navAnt,4)+' €). ¿Es correcto?')) return;
+  if(partic>0){
+    const pAnt=parseFloat(localStorage.getItem('partic'))||0;
+    if(pAnt>0 && Math.abs(partic/pAnt-1)>0.05 &&
+       !confirm('Las participaciones pasan de '+fmtNum(pAnt,2)+' a '+fmtNum(partic,2)+'. ¿Es correcto?')) return;
+    document.getElementById('partic').value=partic;
+    localStorage.removeItem('aportacionDatosPendientes');
+  }
+  const coste=parseFloat(document.getElementById('r4-coste').value);
+  const costeAnt=parseFloat(localStorage.getItem('costeTotal'))||0;
+  let costeCambiado=false;
+  if(coste>0 && Math.abs(coste-costeAnt)>0.5){
+    if(confirm('Renta 4 indica un coste de '+fmtEur(coste)+' y la app tiene '+fmtEur(costeAnt)+'. ¿Actualizar el coste?')){
+      document.getElementById('coste-total').value=coste; costeCambiado=true;
+    }
+  }
+  document.getElementById('nav-base').value=nav;
+  guardarPosicion();                         // guarda NAV/participaciones/coste
+  if(costeCambiado && coste>costeAnt){
+    // El coste de Renta 4 ya incluye la aportación del mes: que el aviso no la vuelva a sumar
+    const h=new Date(); if(h.getDate()>=APORTACION_DIA) localStorage.setItem('ultimaAportacion', h.getFullYear()+'-'+(h.getMonth()+1));
+  }
+  localStorage.setItem('navFecha', fecha);   // ancla de la variación de mercado
+  fechaSnapshot=fecha;                       // "Guardar hoy" registrará esta fecha, como con el enlace
+  localStorage.setItem('fechaSnapshot', fecha);
+  localStorage.removeItem('marketData');
+  state={spPct:0, fxPct:0, spPrice:state.spPrice, fxPrice:state.fxPrice, fecha:null};
+  calcular();
+  document.getElementById('r4-nav').value='';
+  document.getElementById('r4-partic').value='';
+  document.getElementById('r4-coste').value='';
+  prepararFormNav();
+  toast('✓ NAV del '+fmtFecha(fecha)+' guardado');
+  if(hayTiempoReal()) actualizarMercado({silencioso:true});
+  else setStatus('live','Datos del '+fmtFecha(fecha)+' · listo para cierre');
+}
+
+// ── COPIA CIFRADA EN GITHUB (ver los datos en otro móvil) ──
+// El móvil "editor" sube datos.json cifrado (AES-GCM, clave derivada de una contraseña con PBKDF2)
+// a un repositorio aparte. El móvil "lector" lo descarga y lo descifra. GitHub solo guarda texto ilegible.
+// La contraseña y el token se quedan en cada móvil; nunca van dentro de la copia.
+const Sync=(function(){
+  const REPO='oscargalego/mi-fondo-datos', RUTA='datos.json';
+  const API='https://api.github.com/repos/'+REPO+'/contents/'+RUTA;
+  const CLAVES=new Set(['partic','navBase','navFecha','costeTotal','btcCantidad','btcCoste','historial','ultimaAportacion','btcLotes','puntoOrigen']);
+  const ls=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+  const $=id=>document.getElementById(id);
+  let aplicando=false, temporizador=null, ultimaDescarga=0;
+
+  const rol=()=>ls('syncRol')||'';                  // 'editor' | 'lector' | ''
+  const pass=()=>ls('syncPass')||'';
+  const token=()=>ls('syncToken')||'';
+
+  // Base64 de bytes en trozos (los datos pueden ser grandes)
+  function b64(bytes){ let s=''; for(let i=0;i<bytes.length;i+=0x8000) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(s); }
+  function deb64(t){ const s=atob(t), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+  async function clave(p,salt){
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),'PBKDF2',false,['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  }
+  async function cifrar(obj,p){
+    const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await clave(p,salt),new TextEncoder().encode(JSON.stringify(obj))));
+    return {v:1,alg:'PBKDF2-SHA256-310000/AES-GCM-256',salt:b64(salt),iv:b64(iv),ct:b64(ct)};
+  }
+  async function descifrar(env,p){
+    if(!env||env.v!==1) throw new Error('Copia con formato desconocido');
+    try{
+      const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:deb64(env.iv)},await clave(p,deb64(env.salt)),deb64(env.ct));
+      return JSON.parse(new TextDecoder().decode(pt));
+    }catch(e){ throw new Error('Contraseña incorrecta'); }
+  }
+  function estado(t,error){ const e=$('sync-estado'); if(e){ e.textContent=t; e.style.color=error?'#EB7A7A':''; } }
+  const hora=iso=>new Date(iso).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+
+  // ── Editor: subir ──
+  async function subir(manual){
+    if(rol()!=='editor'||!pass()||!token()) return;
+    clearTimeout(temporizador); temporizador=null;
+    estado('Subiendo copia cifrada…');
+    try{
+      const datos=construirBackup(); datos.finnhubKey=ls('finnhubKey')||'';
+      const cuerpo=JSON.stringify(await cifrar(datos,pass()));
+      const h={Authorization:'Bearer '+token(),Accept:'application/vnd.github+json'};
+      let sha;
+      const g=await fetch(API+'?ref=main',{headers:h,cache:'no-store'});
+      if(g.status===200) sha=(await g.json()).sha;
+      else if(g.status===401||g.status===403) throw new Error('El token no es válido o no tiene permiso');
+      else if(g.status!==404) throw new Error('GitHub respondió '+g.status);
+      const r=await fetch(API,{method:'PUT',headers:h,body:JSON.stringify({message:'Copia cifrada '+datos.fecha,content:btoa(cuerpo),sha,branch:'main'})});
+      if(r.status===401||r.status===403) throw new Error('El token no es válido o no tiene permiso de escritura en '+REPO);
+      if(r.status===404) throw new Error('No encuentro el repositorio '+REPO+' (¿está creado y el token tiene acceso?)');
+      if(!r.ok) throw new Error('GitHub respondió '+r.status);
+      localStorage.setItem('syncUltima',datos.fecha);
+      estado('✓ Copia subida: '+hora(datos.fecha));
+      if(manual) toast('✓ Copia cifrada subida');
+    }catch(e){ estado('⚠ No se pudo subir: '+e.message,true); if(manual) toast('⚠ '+e.message); }
+  }
+  function programar(){ if(aplicando||rol()!=='editor') return; clearTimeout(temporizador); temporizador=setTimeout(()=>subir(false),8000); estado('Cambios pendientes de subir…'); }
+
+  // ── Lector: descargar ──
+  async function descargar(manual){
+    if(rol()!=='lector'||!pass()) return;
+    if(!manual && Date.now()-ultimaDescarga<60000) return;
+    ultimaDescarga=Date.now(); estado('Buscando la última copia…');
+    try{
+      const r=await fetch(API+'?ref=main&t='+Date.now(),{headers:{Accept:'application/vnd.github.raw'},cache:'no-store'});
+      if(r.status===404) throw new Error('Todavía no hay ninguna copia subida');
+      if(!r.ok) throw new Error('GitHub respondió '+r.status);
+      const datos=await descifrar(await r.json(),pass());
+      if(datos.fecha!==ls('syncUltima')||manual){
+        aplicando=true;
+        try{ aplicarBackup(datos); if(datos.finnhubKey) localStorage.setItem('finnhubKey',datos.finnhubKey); localStorage.setItem('syncUltima',datos.fecha); }
+        finally{ aplicando=false; }
+        if(typeof hayTiempoReal==='function'&&hayTiempoReal()) actualizarMercado({silencioso:true});
+      }
+      estado('✓ Datos del '+hora(datos.fecha)); cabecera();
+      if(manual) toast('✓ Datos actualizados');
+    }catch(e){ estado('⚠ '+e.message,true); if(manual) toast('⚠ '+e.message); }
+  }
+  function cabecera(){
+    const b=$('sync-banda'); if(!b) return;
+    if(rol()==='lector'&&ls('syncUltima')){ b.hidden=false; b.textContent='Solo lectura: datos compartidos del '+hora(ls('syncUltima')); }
+    else b.hidden=true;
+  }
+
+  // ── Ajustes ──
+  function pintarAjustes(){
+    const r=rol(); document.querySelectorAll('input[name="sync-rol"]').forEach(i=>i.checked=i.value===(r||'editor'));
+    mostrarCampos();
+    $('sync-pass').value=pass()?'••••••••':''; $('sync-token').value=token()?'••••••••':'';
+    $('sync-subir').hidden=r!=='editor'; $('sync-bajar').hidden=r!=='lector'; $('sync-off').hidden=!r;
+    if(!r) estado('Desactivado'); else if(r==='editor') estado(ls('syncUltima')?'✓ Última copia subida: '+hora(ls('syncUltima')):'Activado, aún sin subir'); else estado(ls('syncUltima')?'✓ Datos del '+hora(ls('syncUltima')):'Activado, aún sin datos');
+    cabecera();
+  }
+  function mostrarCampos(){ const ed=(document.querySelector('input[name="sync-rol"]:checked')||{}).value!=='lector'; $('sync-token-grupo').hidden=!ed; }
+  async function activar(){
+    const r=(document.querySelector('input[name="sync-rol"]:checked')||{}).value||'editor';
+    const p=$('sync-pass').value, t=$('sync-token').value.trim();
+    if(p&&p!=='••••••••'){ if(p.length<12){ toast('La contraseña debe tener al menos 12 caracteres'); return; } localStorage.setItem('syncPass',p); }
+    if(!pass()){ toast('Escribe la contraseña compartida'); return; }
+    if(r==='editor'){
+      if(t&&t!=='••••••••') localStorage.setItem('syncToken',t);
+      if(!token()){ toast('Pega el token de GitHub'); return; }
+      localStorage.removeItem('syncUltima');
+    }
+    localStorage.setItem('syncRol',r); pintarAjustes();
+    if(r==='editor') await subir(true); else await descargar(true);
+  }
+  function desactivar(){
+    if(!confirm('¿Desactivar la copia compartida en este móvil? Se borran de este móvil la contraseña y el token; tus datos no se tocan.')) return;
+    ['syncRol','syncPass','syncToken','syncUltima'].forEach(k=>localStorage.removeItem(k)); pintarAjustes(); toast('Copia compartida desactivada');
+  }
+  function init(){
+    if(!$('sync-estado')) return;
+    // Cualquier cambio en los datos del fondo o del BTC programa una subida (solo en el móvil editor)
+    const _set=Storage.prototype.setItem, _rem=Storage.prototype.removeItem;
+    Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); if(this===localStorage&&CLAVES.has(k)) programar(); };
+    Storage.prototype.removeItem=function(k){ _rem.call(this,k); if(this===localStorage&&CLAVES.has(k)) programar(); };
+    document.querySelectorAll('input[name="sync-rol"]').forEach(i=>i.onchange=mostrarCampos);
+    $('sync-activar').onclick=activar; $('sync-subir').onclick=()=>subir(true); $('sync-bajar').onclick=()=>descargar(true); $('sync-off').onclick=desactivar;
+    pintarAjustes();
+    if(rol()==='lector') descargar(false);
+    document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') descargar(false); else if(temporizador) subir(false); });
+  }
+  return {init,subir,descargar,esLector:()=>rol()==='lector',_cifrar:cifrar,_descifrar:descifrar};
+})();
+
+// ── MIGRACIÓN: datos personales que antes estaban escritos en el código ──
+// Se reciben una sola vez por un enlace privado (?migrar=...) y se guardan solo en este móvil.
+(function(){
+  const q=new URLSearchParams(location.search), m=q.get('migrar');
+  if(!m) return;
+  try{
+    const d=JSON.parse(decodeURIComponent(escape(atob(m.replace(/-/g,'+').replace(/_/g,'/')))));
+    if(Array.isArray(d.btcLotes)&&d.btcLotes.length) localStorage.setItem('btcLotes', JSON.stringify(d.btcLotes));
+    if(d.puntoOrigen&&d.puntoOrigen.fecha&&d.puntoOrigen.val>0) localStorage.setItem('puntoOrigen', JSON.stringify(d.puntoOrigen));
+    // Valores que antes venían escritos en el código: solo si este móvil no tiene uno propio
+    ['btcCantidad','btcCoste','partic','navBase','costeTotal'].forEach(k=>{ if(d[k]>0 && !(parseFloat(localStorage.getItem(k))>0)) localStorage.setItem(k, String(d[k])); });
+    localStorage.setItem('_migrado','1');
+  }catch(e){ localStorage.setItem('_migrado','error'); }
+  q.delete('migrar'); const resto=q.toString();
+  window.history.replaceState({},'',location.pathname+(resto?'?'+resto:''));
+})();
+
+// ── CARGA DESDE URL — debe ejecutarse PRIMERO antes del arranque ──
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const fk=params.get('finnhub');
+  if(fk){ localStorage.setItem('finnhubKey', fk.trim()); }
+  if(fk && !(params.get('partic')||params.get('nav')||params.get('coste'))){
+    window.history.replaceState({},'',window.location.pathname);
+  }
+  if(params.get('partic')||params.get('nav')||params.get('coste')){
+    const p=params.get('partic');
+    const n=params.get('nav');
+    const c=params.get('coste');
+    const fc=params.get('fechacierre');
+    // Guardar en localStorage ANTES de que cargarPosicion los lea
+    if(p&&parseFloat(p)>0){ localStorage.setItem('partic', p); localStorage.removeItem('aportacionDatosPendientes'); }
+    if(n&&parseFloat(n)>0) localStorage.setItem('navBase', n);
+    if(c&&parseFloat(c)>0) localStorage.setItem('costeTotal', c);
+    if(fc) localStorage.setItem('fechaSnapshot', fc);
+    if(n&&parseFloat(n)>0){ if(fc) localStorage.setItem('navFecha', fc); else localStorage.removeItem('navFecha'); }
+    // Limpiar datos de mercado
+    localStorage.removeItem('marketData');
+    // Marcar que viene de URL para mostrar toast tras arranque
+    localStorage.setItem('_urlLoad', fc || '1');
+    // Limpiar URL sin recargar
+    window.history.replaceState({},'',window.location.pathname);
+  }
+})();
+
+// ── ARRANQUE ──
+fechaSnapshot = localStorage.getItem('fechaSnapshot') || null;
+cargarPosicion();
+cargarBtcPosicion();
+prepararFormNav();
+initSliders();
+const cargado=cargarDatosCache();
+const btcCacheOk=cargarBtcCache();
+if(!cargado){ setStatus('','Pulsa Actualizar para cargar datos'); }
+calcular();
+calcularBtc();
+calcularTotal();
+setAsset(assetView);
+// El BTC cotiza 24/7 → refrescar precio en segundo plano si no hay caché fresca
+if(!btcCacheOk){ fetchBtcPrecio(); }
+// Con Finnhub: cargar cotización (en vivo o último cierre) nada más abrir
+if(hayTiempoReal()){ actualizarMercado({silencioso:true}); }
+
+// ── AUTO-REFRESCO DEL PRECIO BTC (en vivo, solo con la app visible) ──
+const REFRESCO_MS = 15000; // S&P (con Wall Street abierto) y BTC, solo con la app en pantalla
+let btcRefrescoTimer = null;
+function iniciarRefrescoBtc(){
+  if(btcRefrescoTimer) return;
+  btcRefrescoTimer = setInterval(()=>{
+    if(document.visibilityState === 'visible'){
+      fetchBtcPrecio();
+      if(hayTiempoReal() && sesionAbierta()) actualizarMercado({silencioso:true}); // S&P en vivo
+    }
+  }, REFRESCO_MS); // cada 15 s
+}
+function pararRefrescoBtc(){
+  if(btcRefrescoTimer){ clearInterval(btcRefrescoTimer); btcRefrescoTimer = null; }
+}
+// Arrancar el refresco y reaccionar al volver a la app
+iniciarRefrescoBtc();
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    fetchBtcPrecio();        // refresco inmediato al volver a abrir
+    if(hayTiempoReal()) actualizarMercado({silencioso:true});
+    iniciarRefrescoBtc();
+  } else {
+    pararRefrescoBtc();      // pausa en segundo plano (ahorra batería/datos)
+  }
+});
+renderHistorial();
+Grafica.init();
+Sync.init();
+// Barra inferior: lleva a cada sección y la abre
+document.querySelectorAll('.barra [data-ir]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.barra [data-ir]').forEach(x=>x.removeAttribute('aria-current')); b.setAttribute('aria-current','page');
+  const id=b.dataset.ir; if(id==='top'){ window.scrollTo({top:0,behavior:'smooth'}); return; }
+  const body=document.getElementById('body-'+id); if(body&&body.classList.contains('collapsed')) toggleSection(id);
+  document.getElementById('sec-'+id).scrollIntoView({behavior:'smooth',block:'start'});
+});
+actualizarEstadoBoton();
+setInterval(actualizarEstadoBoton,60000);
+// El modal está definido después de este script: comprobar cuando la página esté completa
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', comprobarAportacion);
+else comprobarAportacion();
+// Llega una captura desde el menú Compartir de Android
+if(new URLSearchParams(location.search).get('compartido')){
+  window.history.replaceState({},'',window.location.pathname);
+  setTimeout(recogerCapturaCompartida, 300);
+}
+
+// Avisar si viene de enlace de Renta 4
+const _urlLoad = localStorage.getItem('_urlLoad');
+if(_urlLoad){
+  localStorage.removeItem('_urlLoad');
+  const fc = fechaSnapshot;
+  const textoFecha = fc ? 'Datos del '+fmtFecha(fc)+' · listo para cierre' : 'Datos de Renta 4 · listo para cierre';
+  setStatus('live', textoFecha);
+  setTimeout(()=>{
+    const msg = fc
+      ? '✓ Datos aplicados · "Guardar hoy" registrará el '+fmtFecha(fc)
+      : '✓ Datos de Renta 4 aplicados correctamente';
+    toast(msg);
+  },600);
+}
+
+if(localStorage.getItem('_migrado')){
+  const ok=localStorage.getItem('_migrado')==='1'; localStorage.removeItem('_migrado');
+  setTimeout(()=>toast(ok?'✓ Datos de BTC e inicio de la gráfica guardados en este móvil':'⚠ El enlace de migración no es válido'),900);
+  if(ok) setTimeout(()=>{ if(typeof Sync!=='undefined') Sync.subir(false); },3000);
+}
+if(localStorage.getItem('aportacionDatosPendientes')==='true'){
+  setTimeout(()=>{ toast('⚠ Pendiente: actualiza participaciones y NAV en Mi posición'); },1500);
+}
+if(localStorage.getItem('extDatosPendientes')==='true'){
+  setTimeout(()=>{ toast('⚠ Aportación extraordinaria: actualiza participaciones y NAV'); },2500);
+}
+
+// Init sliders proyección
+// Sincronizar capital inicial con valoración actual
+(function(){
+  const partic = parseFloat(localStorage.getItem('partic')) || 0;
+  const nav = parseFloat(localStorage.getItem('navBase')) || 0;
+  const capitalReal = Math.round(partic * nav);
+  const sliderCap = document.getElementById('proj-cap');
+  if(sliderCap && capitalReal > 0){
+    sliderCap.value = Math.min(capitalReal, 300000);
+    const el = document.getElementById('proj-cap-val');
+    if(el) el.textContent = Math.min(capitalReal,300000).toLocaleString('es-ES') + ' €';
+  }
+})();
+['proj-cap','proj-rent','proj-anos','proj-ap'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  const pct=((parseFloat(el.value)-parseFloat(el.min))/(parseFloat(el.max)-parseFloat(el.min)))*100;
+  el.style.setProperty('--pct',pct+'%');
+});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+
+<!-- MODAL APORTACIÓN EXTRAORDINARIA - PASO 1 -->
+<div class="modal-overlay hidden" id="modal-ext1">
+  <div class="modal">
+    <div class="modal-title">Aportación extraordinaria</div>
+    <div class="modal-sub">Introduce el importe de la aportación extraordinaria que has realizado.</div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Importe aportado (€)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-importe" step="1" min="0" inputmode="decimal" placeholder="ej: 1000">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarExtPaso1()">Continuar</button>
+      <button class="modal-btn no" onclick="document.getElementById('modal-ext1').classList.add('hidden')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTACIÓN EXTRAORDINARIA - PASO 2 -->
+<div class="modal-overlay hidden" id="modal-ext2">
+  <div class="modal">
+    <div class="modal-title">Actualiza tu posición</div>
+    <div class="modal-sub">Introduce los nuevos datos que aparecen en Renta 4 tras procesar la aportación extraordinaria.</div>
+    <div class="field-group" style="margin-bottom:14px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Participaciones totales</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-partic" step="0.01" min="0" inputmode="decimal" placeholder="ej: 935,20">
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">NAV base (€ / participación)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ext-nav" step="0.0001" min="0" inputmode="decimal" placeholder="ej: 70,1500">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarExtPaso2()">Guardar</button>
+      <button class="modal-btn no" onclick="aplazarExtPaso2()">Lo pongo después</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESET PASO 1 -->
+<div class="modal-overlay hidden" id="modal-reset1">
+  <div class="modal modal-reset">
+    <div class="modal-title">⚠ Restaurar a cero</div>
+    <div class="modal-sub">Se borrarán todos los datos guardados: historial de cierres, posición, aportaciones y configuración. Esta acción no se puede deshacer.<br><br>¿Estás seguro?</div>
+    <div class="modal-btns">
+      <button class="modal-btn si" style="background:rgba(235,122,122,0.1);border-color:rgba(235,122,122,0.3);color:var(--red);" onclick="resetPaso2()">Sí, continuar</button>
+      <button class="modal-btn no" onclick="document.getElementById('modal-reset1').classList.add('hidden')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESET PASO 2 -->
+<div class="modal-overlay hidden" id="modal-reset2">
+  <div class="modal modal-reset">
+    <div class="modal-title">⚠ Confirmación final</div>
+    <div class="modal-sub">Para confirmar escribe <strong style="color:var(--red);font-family:var(--num);">BORRAR</strong> en el campo de abajo y pulsa el botón.</div>
+    <input type="text" class="confirm-input" id="confirm-input" placeholder="Escribe BORRAR" oninput="checkConfirm()">
+    <div class="modal-btns">
+      <button class="modal-btn si" id="btn-confirm-reset" style="background:rgba(235,122,122,0.1);border-color:rgba(235,122,122,0.3);color:var(--red);opacity:0.4;cursor:not-allowed;" onclick="ejecutarReset()" disabled>Borrar todo</button>
+      <button class="modal-btn no" onclick="cancelarReset()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTACIÓN MENSUAL - PASO 1 -->
+<div class="modal-overlay hidden" id="modal-aportacion">
+  <div class="modal">
+    <div class="modal-title">Aportación mensual · Fondo S&amp;P 500</div>
+    <div class="modal-sub" id="modal-sub">Es día 3 del mes. ¿Has realizado tu aportación periódica de 300 €?</div>
+    <div class="modal-amount">+300 €</div>
+    <div class="modal-label" id="modal-ap-coste">Se sumará al coste del fondo. Bitcoin no se toca.</div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarAportacionPaso1()">Sí, la he hecho</button>
+      <button class="modal-btn no" onclick="posponerAportacion()">Todavía no</button>
+      <button class="modal-btn no" style="grid-column:1 / -1;font-size:12px;" onclick="aportacionYaContada()">Ya está incluida en el coste</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTACIÓN MENSUAL - PASO 2 -->
+<div class="modal-overlay hidden" id="modal-aportacion2">
+  <div class="modal">
+    <div class="modal-title">Actualiza tu posición</div>
+    <div class="modal-sub">Introduce los nuevos datos que aparecen en Renta 4 tras procesar la aportación.</div>
+    <div class="field-group" style="margin-bottom:14px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">Participaciones totales</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ap-partic" step="0.01" min="0" inputmode="decimal" placeholder="ej: 923,45">
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:20px;">
+      <label class="field-label" style="font-size:11px;color:var(--text2);margin-bottom:6px;display:block;">NAV base (€ / participación)</label>
+      <div class="field-input-wrap">
+        <input class="field-input" type="number" id="ap-nav" step="0.0001" min="0" inputmode="decimal" placeholder="ej: 69,8500">
+        <span class="field-unit">€</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn si" onclick="confirmarAportacionPaso2()">Guardar</button>
+      <button class="modal-btn no" onclick="aplazarPaso2()">Lo pongo después</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
